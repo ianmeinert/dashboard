@@ -1,38 +1,401 @@
-# sv
+# Kiosk Dashboard Frontend
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A modern, responsive SvelteKit application for displaying kiosk dashboard information with real-time calendar integration.
 
-## Creating a project
+## Features
 
-If you're seeing this, you've probably already done this step. Congrats!
+- **Real-time Calendar Display**: Show upcoming events from Google Calendar
+- **Responsive Design**: Optimized for kiosk displays and various screen sizes
+- **Modern UI**: Clean, accessible interface with Tailwind CSS
+- **TypeScript Support**: Full type safety and IntelliSense
+- **Performance Optimized**: Fast loading and smooth interactions
 
-```bash
-# create a new project in the current directory
-npx sv create
+## Tech Stack
 
-# create a new project in my-app
-npx sv create my-app
+- **Framework**: [SvelteKit](https://kit.svelte.dev/) - Full-stack web framework
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
+- **Language**: [TypeScript](https://www.typescriptlang.org/) - Type-safe JavaScript
+- **Build Tool**: [Vite](https://vitejs.dev/) - Fast build tool and dev server
+- **Package Manager**: npm/yarn/pnpm
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- npm, yarn, or pnpm
+- Backend API running (see [backend README](../backend/README.md))
+
+### Installation
+
+1. **Navigate to the frontend directory:**
+
+   ```bash
+   cd frontend
+   ```
+
+2. **Install dependencies:**
+
+   ```bash
+   # Using npm
+   npm install
+   
+   # Using yarn
+   yarn install
+   
+   # Using pnpm
+   pnpm install
+   ```
+
+3. **Set up environment variables:**
+   Create a `.env` file in the `frontend/` directory:
+
+   ```env
+   # API Configuration
+   VITE_API_BASE_URL=http://localhost:8000
+   VITE_API_TIMEOUT=10000
+   
+   # Application Configuration
+   VITE_APP_TITLE=Kiosk Dashboard
+   VITE_REFRESH_INTERVAL=30000
+   
+   # Development
+   VITE_DEV_MODE=true
+   ```
+
+4. **Start the development server:**
+
+   ```bash
+   npm run dev
+   
+   # Or with auto-open
+   npm run dev -- --open
+   ```
+
+5. **Open your browser:**
+   Navigate to `http://localhost:5173` (or the URL shown in terminal)
+
+## Project Structure
+
+```
+frontend/
+├── src/
+│   ├── app.html              # HTML template
+│   ├── app.css               # Global styles
+│   ├── app.d.ts              # TypeScript declarations
+│   ├── lib/                  # Shared utilities and components
+│   │   ├── components/       # Reusable Svelte components
+│   │   ├── stores/           # Svelte stores for state management
+│   │   ├── utils/            # Utility functions
+│   │   └── types/            # TypeScript type definitions
+│   ├── routes/               # SvelteKit routes
+│   │   ├── +layout.svelte    # Root layout
+│   │   ├── +page.svelte      # Home page
+│   │   └── monitoring/       # Monitoring pages
+│   └── styles/               # Additional stylesheets
+├── static/                   # Static assets
+│   ├── favicon.png
+│   └── images/
+├── package.json              # Dependencies and scripts
+├── svelte.config.js          # SvelteKit configuration
+├── tailwind.config.js        # Tailwind CSS configuration
+├── tsconfig.json             # TypeScript configuration
+├── vite.config.ts            # Vite configuration
+└── README.md                 # This file
 ```
 
-## Developing
+## Development
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+### Available Scripts
 
 ```bash
-npm run dev
+# Development
+npm run dev          # Start development server
+npm run dev -- --open # Start dev server and open browser
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+# Building
+npm run build        # Build for production
+npm run preview      # Preview production build
+
+# Code Quality
+npm run check        # Type check and lint
+npm run lint         # Run ESLint
+npm run format       # Format code with Prettier
+
+# Testing
+npm run test         # Run unit tests
+npm run test:watch   # Run tests in watch mode
+npm run test:coverage # Run tests with coverage
 ```
 
-## Building
+### Development Workflow
 
-To create a production version of your app:
+1. **Start the backend API** (see backend README)
+2. **Start the frontend dev server:**
+
+   ```bash
+   npm run dev
+   ```
+
+3. **Make changes** - files will auto-reload
+4. **Check code quality:**
+
+   ```bash
+   npm run check
+   npm run lint
+   npm run format
+   ```
+
+### Code Quality Tools
+
+- **ESLint**: Code linting and style enforcement
+- **Prettier**: Code formatting
+- **TypeScript**: Type checking
+- **Svelte Check**: Svelte-specific type checking
+
+## API Integration
+
+### Backend Communication
+
+The frontend communicates with the FastAPI backend for:
+
+- Calendar events data
+- System health monitoring
+- Real-time updates
+
+### Environment Configuration
+
+Configure API endpoints in your `.env` file:
+
+```env
+# Development
+VITE_API_BASE_URL=http://localhost:8000
+
+# Production
+VITE_API_BASE_URL=https://your-api-domain.com
+```
+
+### Error Handling
+
+- Network errors are handled gracefully
+- User-friendly error messages
+- Automatic retry mechanisms
+- Fallback content when API is unavailable
+
+## Styling
+
+### Tailwind CSS
+
+This project uses Tailwind CSS for styling:
 
 ```bash
+# Customize Tailwind configuration
+npx tailwindcss init
+```
+
+### Custom Styles
+
+- Global styles in `src/app.css`
+- Component-specific styles in `.svelte` files
+- Utility classes for common patterns
+
+### Responsive Design
+
+- Mobile-first approach
+- Breakpoints for various screen sizes
+- Optimized for kiosk displays
+
+## Testing
+
+### Unit Testing
+
+```bash
+# Run tests
+npm run test
+
+# Run with coverage
+npm run test:coverage
+
+# Watch mode
+npm run test:watch
+```
+
+### Testing Strategy
+
+- Component testing with `@testing-library/svelte`
+- Unit tests for utilities and stores
+- Integration tests for API communication
+- E2E tests for critical user flows
+
+## Building for Production
+
+### Build Process
+
+```bash
+# Create production build
 npm run build
+
+# Preview production build
+npm run preview
 ```
 
-You can preview the production build with `npm run preview`.
+### Optimization
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+- Code splitting for better performance
+- Asset optimization and compression
+- Tree shaking to reduce bundle size
+- Service worker for caching (if configured)
+
+### Deployment
+
+1. **Build the application:**
+
+   ```bash
+   npm run build
+   ```
+
+2. **Deploy the `build/` directory** to your hosting provider
+
+3. **Configure environment variables** for production
+
+4. **Set up proper CORS** on your backend API
+
+## Security Considerations
+
+### Frontend Security
+
+- **Input Validation**: All user inputs are validated
+- **XSS Prevention**: Svelte's built-in XSS protection
+- **CSRF Protection**: Implemented for state-changing requests
+- **Content Security Policy**: Configured for additional security
+
+### API Security
+
+- **HTTPS Only**: All API requests use HTTPS in production
+- **Authentication**: Proper token management
+- **Rate Limiting**: Handle rate limit responses gracefully
+- **Error Handling**: Never expose sensitive error details
+
+### Environment Variables
+
+- **Never commit secrets** to version control
+- **Use VITE_ prefix** for client-side variables
+- **Validate environment** on startup
+- **Provide fallbacks** for missing variables
+
+## Performance Optimization
+
+### Loading Performance
+
+- **Code Splitting**: Automatic route-based splitting
+- **Lazy Loading**: Components loaded on demand
+- **Asset Optimization**: Images and fonts optimized
+- **Caching**: Browser and service worker caching
+
+### Runtime Performance
+
+- **Svelte Reactivity**: Efficient reactive updates
+- **Store Optimization**: Minimal store subscriptions
+- **Memory Management**: Proper cleanup in components
+- **Debouncing**: API calls debounced to prevent spam
+
+## Accessibility (a11y)
+
+### Standards Compliance
+
+- **WCAG 2.1 AA**: Accessibility standards compliance
+- **Semantic HTML**: Proper HTML structure
+- **Keyboard Navigation**: Full keyboard accessibility
+- **Screen Reader Support**: ARIA labels and descriptions
+
+### Testing Accessibility
+
+```bash
+# Run accessibility tests
+npm run test:a11y
+
+# Manual testing checklist
+# - Keyboard navigation
+# - Screen reader compatibility
+# - Color contrast
+# - Focus management
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Build Errors:**
+
+- Check Node.js version (requires 18+)
+- Clear node_modules and reinstall: `rm -rf node_modules && npm install`
+- Check TypeScript errors: `npm run check`
+
+**API Connection Issues:**
+
+- Verify backend is running
+- Check environment variables
+- Ensure CORS is configured properly
+- Check network connectivity
+
+**Styling Issues:**
+
+- Restart dev server after Tailwind changes
+- Check CSS import order
+- Verify Tailwind classes are correct
+
+### Debug Mode
+
+Enable debug mode for additional logging:
+
+```env
+VITE_DEV_MODE=true
+VITE_DEBUG=true
+```
+
+## Contributing
+
+### Development Guidelines
+
+1. **Follow Svelte conventions**
+2. **Use TypeScript** for all new code
+3. **Write tests** for new features
+4. **Follow accessibility guidelines**
+5. **Use conventional commit messages**
+
+### Code Style
+
+- Use Prettier for formatting
+- Follow ESLint rules
+- Use meaningful variable names
+- Add JSDoc comments for functions
+
+### Pull Request Process
+
+1. Create feature branch
+2. Make changes with tests
+3. Run quality checks
+4. Submit PR with description
+5. Address review feedback
+
+## License
+
+[Add your license information here]
+
+## Support
+
+For issues and questions:
+
+- Check the troubleshooting section above
+- Review the [SvelteKit documentation](https://kit.svelte.dev/docs)
+- Create an issue in the project repository
+- Check the backend API documentation
+
+## Changelog
+
+### Version 1.0.0
+
+- Initial release
+- Calendar integration
+- Responsive design
+- TypeScript support
