@@ -66,10 +66,9 @@
 </script>
 
 <!-- Backdrop -->
-<div class="fixed inset-0 bg-white/60 backdrop-blur-md z-40"></div>
-<div class="fixed inset-0 bg-white bg-opacity-60 backdrop-blur-sm z-50 flex items-center justify-center p-4" on:click={close}>
-  <!-- Modal -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-hidden" on:click|stopPropagation>
+<div class="modal-backdrop"></div>
+<div class="modal-container" on:click={close}>
+  <div class="modal-box" on:click|stopPropagation>
     <!-- Header -->
     <div class="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
       <h2 class="text-xl font-bold text-gray-900 dark:text-white">{displayDate}</h2>
@@ -81,7 +80,6 @@
         ×
       </button>
     </div>
-
     <!-- Content -->
     <div class="p-4 overflow-y-auto max-h-[calc(80vh-80px)]">
       {#if events.length === 0}
@@ -119,7 +117,6 @@
             </div>
           </div>
         {/if}
-
         <!-- Timed events section -->
         {#if timedEvents.length > 0}
           <div>
@@ -156,4 +153,36 @@
       {/if}
     </div>
   </div>
-</div> 
+</div>
+
+<style>
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(128,128,128,0.4);
+    z-index: 40;
+    pointer-events: auto;
+    backdrop-filter: blur(2px);
+  }
+  .modal-container {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .modal-box {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 1.5px 6px rgba(0,0,0,0.08);
+    max-width: 420px;
+    width: 95vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    pointer-events: auto;
+    overflow: hidden;
+  }
+</style> 

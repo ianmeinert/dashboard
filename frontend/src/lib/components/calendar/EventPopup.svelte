@@ -11,9 +11,9 @@
   export let dayEvents: any[] = [];
 </script>
 
-<!-- Lighter, more opaque modal background -->
-<div class="fixed inset-0 bg-white bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50" on:click={close}>
-  <div class="bg-white dark:bg-gray-800 dark:text-gray-100 rounded-lg shadow-lg p-6 min-w-[300px] max-w-[90vw] relative border dark:border-gray-700" on:click|stopPropagation>
+<div class="modal-backdrop"></div>
+<div class="modal-container modal-popup" on:click={close}>
+  <div class="modal-box" on:click|stopPropagation>
     {#if showCloseButton}
       <button
         class="absolute top-2 right-2 w-11 h-11 flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-2xl font-bold shadow hover:bg-gray-300 dark:hover:bg-gray-600 active:bg-gray-400 dark:active:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400 border dark:border-gray-700"
@@ -56,4 +56,41 @@
     </div>
     <button class="mt-4 px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-800" on:click={close}>Close</button>
   </div>
-</div> 
+</div>
+
+<style>
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(128,128,128,0.4);
+    z-index: 40;
+    pointer-events: auto;
+    backdrop-filter: blur(2px);
+  }
+  .modal-container {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .modal-popup {
+    z-index: 70;
+  }
+  .modal-box {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 1.5px 6px rgba(0,0,0,0.08);
+    max-width: 340px;
+    width: 95vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    pointer-events: auto;
+    overflow: hidden;
+    position: relative;
+    padding: 2rem 1.5rem 1.5rem 1.5rem;
+  }
+</style> 
