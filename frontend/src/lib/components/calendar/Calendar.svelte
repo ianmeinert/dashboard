@@ -224,7 +224,10 @@
         {isMultiDay}
         {getEventColorClass}
         formatTime={(dateStr) => new Date(dateStr).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
-        formatDate={(dateStr) => new Date(dateStr).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        formatDate={(dateStr) => {
+          const [year, month, day] = dateStr.split('-').map(Number);
+          return new Date(year, month - 1, day).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }}
         linkify={(text) => text ? text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">$1</a>') : ''}
         on:close={closeDayView}
         on:openEvent={openEventFromDayView}
@@ -237,7 +240,10 @@
         close={closeModal}
         {isAllDay}
         {isMultiDay}
-        formatDate={(dateStr) => new Date(dateStr).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        formatDate={(dateStr) => {
+          const [year, month, day] = dateStr.split('-').map(Number);
+          return new Date(year, month - 1, day).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }}
         formatTime={(dateStr) => new Date(dateStr).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
         {getEventColorClass}
         linkify={(text) => text ? text.replace(/(https?:\/\/[^\s]+)/g, '<a href=\"$1\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-blue-600 underline\">$1</a>') : ''}

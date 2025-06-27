@@ -163,6 +163,7 @@
     z-index: 40;
     pointer-events: auto;
     backdrop-filter: blur(2px);
+    padding-bottom: 64px;
   }
   .modal-container {
     position: fixed;

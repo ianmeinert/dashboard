@@ -1,5 +1,5 @@
 <script lang="ts">
-import { onMount } from 'svelte';
+import { onDestroy, onMount } from 'svelte';
 import type { CalendarEvent } from './Calendar.svelte';
 import Calendar from './Calendar.svelte';
 
@@ -16,6 +16,8 @@ const CACHE_KEY = 'calendar_month_events';
 const COLORS_CACHE_KEY = 'calendar_colors';
 const CACHE_EXPIRY_KEY = 'calendar_cache_expiry';
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+let cacheExpiry: number | null = null;
 
 function getMonthKey(year: number, month: number): string {
   return `${year}-${String(month + 1).padStart(2, '0')}`;
@@ -182,13 +184,47 @@ async function loadVisibleAndAdjacentMonths() {
   fetchMonthEvents(nextYear, nextMonth);
 }
 
+function isCacheStale(): boolean {
+  if (typeof window === 'undefined') return true;
+  if (cacheExpiry === null) {
+    const expiryStr = localStorage.getItem(CACHE_EXPIRY_KEY);
+    cacheExpiry = expiryStr ? parseInt(expiryStr) : null;
+  }
+  return !cacheExpiry || Date.now() > cacheExpiry;
+}
+
+function updateCacheExpiry() {
+  if (typeof window === 'undefined') return;
+  const expiryStr = localStorage.getItem(CACHE_EXPIRY_KEY);
+  cacheExpiry = expiryStr ? parseInt(expiryStr) : null;
+}
+
+function refreshIfStale() {
+  updateCacheExpiry();
+  if (isCacheStale()) {
+    // Force re-fetch for current month
+    const key = getMonthKey(currentYear, currentMonth);
+    delete monthEvents[key];
+    fetchMonthEvents(currentYear, currentMonth).then(updateEventsForCurrentMonth);
+  }
+}
+
 onMount(async () => {
   if (typeof window !== 'undefined') {
     loadFromCache();
+    updateCacheExpiry();
     updateEventsForCurrentMonth();
+    window.addEventListener('focus', refreshIfStale);
   }
   await fetchCalendarColors();
   await loadVisibleAndAdjacentMonths();
+});
+
+// Clean up event listener on destroy
+onDestroy(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('focus', refreshIfStale);
+  }
 });
 </script>
 

@@ -25,7 +25,7 @@
     ${cell.isCurrent ? 'bg-white dark:bg-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800' : 'bg-gray-100 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}
     ${isToday ? 'bg-yellow-200 dark:bg-yellow-600 border-yellow-500 dark:border-yellow-400 hover:bg-yellow-300 dark:hover:bg-yellow-500' : ''}`}
   style="position:relative;"
-  on:click={() => openDayView(cell)}
+  on:click={() => openDayView({ ...cell })}
   on:click|stopPropagation={() => {}}
 >
   <div class="font-bold">{cell.day}</div>
