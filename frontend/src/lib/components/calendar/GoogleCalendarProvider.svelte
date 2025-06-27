@@ -46,9 +46,13 @@ function loadFromCache() {
       return;
     }
     const cachedEvents = localStorage.getItem(CACHE_KEY);
-    if (cachedEvents) monthEvents = JSON.parse(cachedEvents);
+    if (cachedEvents) {
+      monthEvents = JSON.parse(cachedEvents);
+    }
     const cachedColors = localStorage.getItem(COLORS_CACHE_KEY);
-    if (cachedColors) calendarColors = JSON.parse(cachedColors);
+    if (cachedColors) {
+      calendarColors = JSON.parse(cachedColors);
+    }
   } catch (e) {
     clearCache();
   }
@@ -113,7 +117,9 @@ function assignFallbackColors() {
 
 async function fetchMonthEvents(year: number, month: number) {
   const key = getMonthKey(year, month);
-  if (monthEvents[key]) return;
+  if (monthEvents[key]) {
+    return;
+  }
   const { start, end } = getVisibleGridRange(year, month);
   loading = true;
   try {
@@ -209,12 +215,25 @@ function refreshIfStale() {
   }
 }
 
+function ensureCurrentMonthData() {
+  const key = getMonthKey(currentYear, currentMonth);
+  const cached = monthEvents[key];
+  if (!cached || (Array.isArray(cached) && cached.length === 0)) {
+    delete monthEvents[key];
+    fetchMonthEvents(currentYear, currentMonth).then(updateEventsForCurrentMonth);
+  }
+}
+
 onMount(async () => {
   if (typeof window !== 'undefined') {
     loadFromCache();
     updateCacheExpiry();
     updateEventsForCurrentMonth();
-    window.addEventListener('focus', refreshIfStale);
+    ensureCurrentMonthData();
+    window.addEventListener('focus', () => {
+      refreshIfStale();
+      ensureCurrentMonthData();
+    });
   }
   await fetchCalendarColors();
   await loadVisibleAndAdjacentMonths();
@@ -223,7 +242,10 @@ onMount(async () => {
 // Clean up event listener on destroy
 onDestroy(() => {
   if (typeof window !== 'undefined') {
-    window.removeEventListener('focus', refreshIfStale);
+    window.removeEventListener('focus', () => {
+      refreshIfStale();
+      ensureCurrentMonthData();
+    });
   }
 });
 </script>

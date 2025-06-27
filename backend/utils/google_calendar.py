@@ -28,8 +28,9 @@ from .sync_token_db import (get_all_calendar_colors, get_calendar_color,
 logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
-CREDENTIALS_FILE = os.path.join(os.path.dirname(__file__), "..", "credentials.json")
-TOKEN_FILE = os.path.join(os.path.dirname(__file__), "..", "token.json")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+CREDENTIALS_FILE = os.path.join(DATA_DIR, "credentials.json")
+TOKEN_FILE = os.path.join(DATA_DIR, "token.json")
 
 _event_cache = None
 _event_cache_time = None
