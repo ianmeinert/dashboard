@@ -53,7 +53,7 @@ A FastAPI-based backend service for managing kiosk dashboard functionality with 
 - Python 3.8+
 - Google Cloud Platform account
 - Google Calendar API enabled
-- OpenWeatherMap API key (add to `backend/data/credentials.json`)
+- OpenWeatherMap API key
 
 ### Installation
 
@@ -78,12 +78,9 @@ A FastAPI-based backend service for managing kiosk dashboard functionality with 
    uv pip install -r requirements.txt
    ```
 
-4. **Set up Google Calendar credentials:**
-   - Create a Google Cloud project
-   - Enable the Google Calendar API
-   - Create OAuth2 credentials
-   - Download `credentials.json` and place it in the `backend/data/` directory
-   - Add your OpenWeatherMap API key to `credentials.json` as `openweathermap_api_key`
+4. **Set up credentials:**
+   - See the main [README.md](../README.md#credentials-setup) for detailed credentials setup instructions
+   - Ensure `backend/data/credentials.json` is properly configured with Google Calendar and OpenWeatherMap credentials
 
 5. **Run the application:**
 
