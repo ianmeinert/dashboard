@@ -1,14 +1,23 @@
 # Kiosk Dashboard Frontend
 
-A modern, responsive SvelteKit application for displaying kiosk dashboard information with real-time calendar integration.
+A modern, responsive SvelteKit application for displaying kiosk dashboard information with real-time calendar integration and weather/forecast support.
 
 ## Features
 
 - **Real-time Calendar Display**: Show upcoming events from Google Calendar
+- **Weather Widget**: Current weather and 5-day forecast by geolocation, city/state, or zip code, with robust fallback logic
 - **Responsive Design**: Optimized for kiosk displays and various screen sizes
 - **Modern UI**: Clean, accessible interface with Tailwind CSS
+- **Card-Style Widgets**: Visually distinct dashboard quadrants with card boundaries
 - **TypeScript Support**: Full type safety and IntelliSense
 - **Performance Optimized**: Fast loading and smooth interactions
+
+## Weather Widget Usage
+
+- On load, attempts to use browser geolocation for weather.
+- If geolocation is denied/unavailable, falls back to Austin, TX (not shown in input fields).
+- Users can search by city/state or zip code; input fields remain empty unless user enters a value.
+- Robust error handling and user-friendly messages for API/network issues.
 
 ## Tech Stack
 
@@ -39,12 +48,6 @@ A modern, responsive SvelteKit application for displaying kiosk dashboard inform
    ```bash
    # Using npm
    npm install
-   
-   # Using yarn
-   yarn install
-   
-   # Using pnpm
-   pnpm install
    ```
 
 3. **Set up environment variables:**
@@ -54,11 +57,9 @@ A modern, responsive SvelteKit application for displaying kiosk dashboard inform
    # API Configuration
    VITE_API_BASE_URL=http://localhost:8000
    VITE_API_TIMEOUT=10000
-   
    # Application Configuration
    VITE_APP_TITLE=Kiosk Dashboard
    VITE_REFRESH_INTERVAL=30000
-   
    # Development
    VITE_DEV_MODE=true
    ```
@@ -67,7 +68,6 @@ A modern, responsive SvelteKit application for displaying kiosk dashboard inform
 
    ```bash
    npm run dev
-   
    # Or with auto-open
    npm run dev -- --open
    ```
@@ -90,7 +90,7 @@ frontend/
 │   │   └── types/            # TypeScript type definitions
 │   ├── routes/               # SvelteKit routes
 │   │   ├── +layout.svelte    # Root layout
-│   │   ├── +page.svelte      # Home page
+│   │   ├── +page.svelte      # Home page (dashboard)
 │   │   └── monitoring/       # Monitoring pages
 │   └── styles/               # Additional stylesheets
 ├── static/                   # Static assets
@@ -103,6 +103,20 @@ frontend/
 ├── vite.config.ts            # Vite configuration
 └── README.md                 # This file
 ```
+
+## Dashboard Layout
+
+- Quadrants: Family Calendar, Weather/Forecast, Grocery List (placeholder), Family Chores (placeholder)
+- Card-style boundaries for each widget/quadrant
+- Responsive grid adapts to screen size
+- Expand/focus any quadrant for detailed view
+
+## Weather Widget Details
+
+- **Geolocation**: Uses browser geolocation if available; otherwise, falls back to Austin, TX (not shown in input fields)
+- **Manual Search**: User can enter city/state or zip code; input fields remain empty unless user enters a value
+- **Error Handling**: Displays user-friendly error messages for API/network issues
+- **Location Display**: Shows resolved location below the search bar
 
 ## Development
 
@@ -160,6 +174,7 @@ npm run test:coverage # Run tests with coverage
 The frontend communicates with the FastAPI backend for:
 
 - Calendar events data
+- Weather and forecast data (with geolocation/city/zip fallback)
 - System health monitoring
 - Real-time updates
 
@@ -198,12 +213,6 @@ npx tailwindcss init
 - Global styles in `src/app.css`
 - Component-specific styles in `.svelte` files
 - Utility classes for common patterns
-
-### Responsive Design
-
-- Mobile-first approach
-- Breakpoints for various screen sizes
-- Optimized for kiosk displays
 
 ## Testing
 

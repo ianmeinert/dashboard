@@ -1,13 +1,15 @@
 # Kiosk Dashboard Backend
 
-A FastAPI-based backend service for managing kiosk dashboard functionality with Google Calendar integration.
+A FastAPI-based backend service for managing kiosk dashboard functionality with Google Calendar integration and weather/forecast support.
 
 ## Features
 
 - **Google Calendar Integration**: Fetch upcoming events via OAuth2 authentication
+- **Weather & Forecast API**: Fetch current weather and 5-day forecast by geolocation (lat/lon), city/state, or zip code
 - **RESTful API**: Clean, documented endpoints following OpenAPI standards
 - **Security**: Secure credential management and OAuth2 flow
 - **Monitoring**: Health checks and system monitoring endpoints
+- **Robust Error Handling**: Graceful error messages for upstream and internal errors
 
 ## API Endpoints
 
@@ -16,10 +18,33 @@ A FastAPI-based backend service for managing kiosk dashboard functionality with 
 - `GET /api/calendar/events` - Retrieve upcoming calendar events
 - `GET /api/calendar/health` - Calendar service health check
 
+### Weather
+
+- `GET /api/weather/current` - Get current weather by lat/lon, city/state, or zip code
+- `GET /api/weather/forecast` - Get 5-day forecast by lat/lon, city/state, or zip code
+
+#### Weather Endpoint Usage Examples
+
+- By geolocation:
+  - `/api/weather/current?lat=30.2672&lon=-97.7431`
+  - `/api/weather/forecast?lat=30.2672&lon=-97.7431`
+- By city/state:
+  - `/api/weather/current?city=Austin&state=TX`
+  - `/api/weather/forecast?city=Austin&state=TX`
+- By zip code:
+  - `/api/weather/current?zip_code=78701`
+  - `/api/weather/forecast?zip_code=78701`
+
 ### Monitoring
 
 - `GET /api/monitoring/health` - Overall system health status
 - `GET /api/monitoring/status` - Detailed system status
+
+## Geolocation Fallback Logic
+
+- The backend supports weather queries by geolocation (lat/lon), city/state, or zip code.
+- If geolocation is not available, the frontend falls back to a default location (Austin, TX).
+- All endpoints provide robust error handling and user-friendly error messages.
 
 ## Quick Start
 
@@ -28,6 +53,7 @@ A FastAPI-based backend service for managing kiosk dashboard functionality with 
 - Python 3.8+
 - Google Cloud Platform account
 - Google Calendar API enabled
+- OpenWeatherMap API key (add to `backend/data/credentials.json`)
 
 ### Installation
 
@@ -44,28 +70,20 @@ A FastAPI-based backend service for managing kiosk dashboard functionality with 
    uv venv
    .venv\Scripts\activate  # Windows
    source .venv/bin/activate  # Linux/macOS
-   
-   # Or using venv
-   python -m venv .venv
-   .venv\Scripts\activate  # Windows
-   source .venv/bin/activate  # Linux/macOS
    ```
 
 3. **Install dependencies:**
 
    ```bash
-   # Using uv
    uv pip install -r requirements.txt
-   
-   # Or using pip
-   pip install -r requirements.txt
    ```
 
 4. **Set up Google Calendar credentials:**
    - Create a Google Cloud project
    - Enable the Google Calendar API
    - Create OAuth2 credentials
-   - Download `credentials.json` and place it in the `backend/` directory
+   - Download `credentials.json` and place it in the `backend/data/` directory
+   - Add your OpenWeatherMap API key to `credentials.json` as `openweathermap_api_key`
 
 5. **Run the application:**
 
@@ -142,22 +160,25 @@ Retrieve upcoming calendar events.
 ]
 ```
 
-### Health Check Endpoint
+### Weather Endpoint
 
-**GET** `/api/monitoring/health`
+**GET** `/api/weather/current` or `/api/weather/forecast`
 
-Check system health status.
+Query Parameters:
+
+- `lat`, `lon`: Latitude and longitude (preferred for geolocation)
+- `city`, `state`: City and state (fallback)
+- `zip_code`: US zip code (fallback)
 
 **Response Example:**
 
 ```json
 {
-  "status": "healthy",
-  "timestamp": "2024-06-01T10:00:00Z",
-  "version": "1.0.0",
-  "services": {
-    "calendar": "healthy",
-    "database": "healthy"
+  "weather": {
+    "coord": { "lon": -97.7431, "lat": 30.2672 },
+    "weather": [ { "id": 800, "main": "Clear", "description": "clear sky", "icon": "01d" } ],
+    "main": { "temp": 75.2, "humidity": 60 },
+    ...
   }
 }
 ```
@@ -170,17 +191,19 @@ Check system health status.
 backend/
 ├── api/                 # API route modules
 │   ├── calendar.py     # Calendar endpoints
-│   └── monitoring.py   # Monitoring endpoints
+│   ├── monitoring.py   # Monitoring endpoints
+│   └── weather.py      # Weather endpoints
 ├── schemas/            # Pydantic models
 │   └── calendar.py     # Calendar data models
 ├── utils/              # Utility functions
 │   ├── google_calendar.py  # Google Calendar integration
 │   ├── monitoring.py       # Monitoring utilities
-│   └── sync_token_db.py    # Token management
-├── data/               # Data storage
+│   ├── sync_token_db.py    # Token management
+│   └── weather.py          # Weather/AQI utilities
+├── data/               # Data storage (credentials, tokens)
 ├── main.py             # FastAPI application entry point
 ├── requirements.txt    # Python dependencies
-└── README.md          # This file
+└── README.md           # This file
 ```
 
 ### Running Tests
@@ -198,90 +221,4 @@ pytest --cov=api --cov=utils --cov-report=html
 
 ### Code Quality
 
-```bash
-# Format code
-black .
-
-# Sort imports
-isort .
-
-# Lint code
-flake8 .
-
-# Type checking
-mypy .
 ```
-
-## Security Considerations
-
-### OAuth2 Implementation
-
-- Uses Google OAuth2 for secure calendar access
-- Implements token refresh mechanism
-- Stores tokens securely in local filesystem
-- Minimal required scopes: `https://www.googleapis.com/auth/calendar.readonly`
-
-### Best Practices
-
-- **Input Validation**: All inputs validated using Pydantic models
-- **Error Handling**: Comprehensive error handling with appropriate HTTP status codes
-- **Logging**: Structured logging for debugging and monitoring
-- **Rate Limiting**: Consider implementing rate limiting for production
-- **CORS**: Configure CORS appropriately for your frontend domain
-
-### Production Deployment
-
-1. **Use HTTPS**: Always use HTTPS in production
-2. **Environment Variables**: Store all secrets in environment variables
-3. **Process Management**: Use Gunicorn or similar for production
-4. **Monitoring**: Implement proper logging and monitoring
-5. **Backup**: Regular backup of token and configuration data
-
-## Troubleshooting
-
-### Common Issues
-
-**OAuth2 Authorization Error:**
-
-- Ensure `credentials.json` is properly formatted
-- Check that Google Calendar API is enabled
-- Verify redirect URIs in Google Cloud Console
-
-**Token Refresh Issues:**
-
-- Delete `token.json` and re-authenticate
-- Check network connectivity to Google APIs
-
-**Import Errors:**
-
-- Ensure virtual environment is activated
-- Verify all dependencies are installed: `pip install -r requirements.txt`
-
-### Logs
-
-Check application logs for detailed error information:
-
-```bash
-# View logs in development
-uvicorn main:app --reload --log-level debug
-```
-
-## Contributing
-
-1. Follow PEP 8 style guidelines
-2. Add type hints to all functions
-3. Write tests for new features
-4. Update documentation for API changes
-5. Use conventional commit messages
-
-## License
-
-[Add your license information here]
-
-## Support
-
-For issues and questions:
-
-- Check the troubleshooting section above
-- Review API documentation at `/docs` when running
-- Create an issue in the project repository

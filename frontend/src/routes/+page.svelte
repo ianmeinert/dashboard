@@ -32,16 +32,21 @@
     margin: 0 auto;
     min-height: 0;
   }
-  .calendar-cell {
+  .forecast-cell {
     grid-row: 1 / 2;
     grid-column: 1 / 2;
   }
-  .forecast-cell {
+  .grocery-cell {
     grid-row: 1 / 2;
-    grid-column: 2 / 2;
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+    grid-column: 2 / 3;
+  }
+  .calendar-cell {
+    grid-row: 2 / 3;
+    grid-column: 1 / 2;
+  }
+  .chores-cell {
+    grid-row: 2 / 3;
+    grid-column: 2 / 3;
   }
   .forecast-quadrant {
     max-width: 700px;
@@ -52,21 +57,18 @@
   .grocery-quadrant {
     /* Removed flex and min-height to allow natural stacking */
   }
-  .chores-cell {
-    grid-row: 2 / 3;
-    grid-column: 1 / 3;
-  }
   @media (max-width: 900px) {
     .dashboard-grid {
       grid-template-columns: 1fr;
       grid-template-rows: auto auto auto auto;
     }
-    .calendar-cell, .forecast-cell, .chores-cell {
+    .forecast-cell, .grocery-cell, .calendar-cell, .chores-cell {
       grid-column: 1 / 2;
     }
-    .chores-cell {
-      grid-row: 4 / 5;
-    }
+    .forecast-cell { grid-row: 1 / 2; }
+    .grocery-cell { grid-row: 2 / 3; }
+    .calendar-cell { grid-row: 3 / 4; }
+    .chores-cell { grid-row: 4 / 5; }
   }
   .quadrant {
     transition: box-shadow 0.2s, transform 0.2s, z-index 0.2s;
@@ -133,10 +135,38 @@
   }
 </style>
 
-<div class="min-h-screen bg-gray-50 p-4">
+<div class="min-h-screen bg-gray-50 p-4 overflow-y-auto">
   <h1 class="text-4xl font-extrabold text-center mb-8 tracking-tight">Family Dashboard</h1>
   <div class="dashboard-grid {selectedQuadrant ? 'focused' : ''}">
-    <!-- Family Calendar -->
+    <!-- Forecast (top-left) -->
+    <div class="forecast-cell">
+      <div class="quadrant forecast-quadrant bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md p-6 {selectedQuadrant === 'forecast' ? 'selected' : ''}" tabindex="0" aria-label="Expand Todays Forecast" on:click={() => selectQuadrant('forecast')}>
+        <h2 class="text-xl font-bold mb-4 text-center">Todays Forecast</h2>
+        <ForecastWidget />
+        {#if selectedQuadrant !== 'forecast'}
+          <div class="quadrant-overlay" tabindex="-1" aria-hidden="true"></div>
+        {/if}
+        {#if selectedQuadrant === 'forecast'}
+          <button class="close-btn" aria-label="Close" on:click|stopPropagation={closeQuadrant}>&times;</button>
+        {/if}
+      </div>
+    </div>
+
+    <!-- Grocery List (top-right) -->
+    <div class="grocery-cell">
+      <div class="quadrant grocery-quadrant bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md p-6 {selectedQuadrant === 'grocery' ? 'selected' : ''}" tabindex="0" aria-label="Expand Grocery List" on:click={() => selectQuadrant('grocery')}>
+        <h2 class="text-xl font-bold mb-4 text-center">Grocery List</h2>
+        <div class="flex-1 flex items-center justify-center text-gray-400">Grocery list coming soon…</div>
+        {#if selectedQuadrant !== 'grocery'}
+          <div class="quadrant-overlay" tabindex="-1" aria-hidden="true"></div>
+        {/if}
+        {#if selectedQuadrant === 'grocery'}
+          <button class="close-btn" aria-label="Close" on:click|stopPropagation={closeQuadrant}>&times;</button>
+        {/if}
+      </div>
+    </div>
+
+    <!-- Family Calendar (bottom-left) -->
     <div class="calendar-cell">
       <div class="quadrant bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md p-6 {selectedQuadrant === 'calendar' ? 'selected' : ''}" tabindex="0" aria-label="Expand Family Calendar" on:click={() => selectQuadrant('calendar')}>
         <h2 class="text-xl font-bold mb-4 text-center">Family Calendar</h2>
@@ -152,31 +182,7 @@
       </div>
     </div>
 
-    <!-- Forecast & Grocery List split vertically -->
-    <div class="forecast-cell">
-      <div class="quadrant forecast-quadrant bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md p-6 {selectedQuadrant === 'forecast' ? 'selected' : ''}" tabindex="0" aria-label="Expand Todays Forecast" on:click={() => selectQuadrant('forecast')}>
-        <h2 class="text-xl font-bold mb-4 text-center">Todays Forecast</h2>
-        <ForecastWidget />
-        {#if selectedQuadrant !== 'forecast'}
-          <div class="quadrant-overlay" tabindex="-1" aria-hidden="true"></div>
-        {/if}
-        {#if selectedQuadrant === 'forecast'}
-          <button class="close-btn" aria-label="Close" on:click|stopPropagation={closeQuadrant}>&times;</button>
-        {/if}
-      </div>
-      <div class="quadrant grocery-quadrant bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md p-6 {selectedQuadrant === 'grocery' ? 'selected' : ''}" tabindex="0" aria-label="Expand Grocery List" on:click={() => selectQuadrant('grocery')}>
-        <h2 class="text-xl font-bold mb-4 text-center">Grocery List</h2>
-        <div class="flex-1 flex items-center justify-center text-gray-400">Grocery list coming soon…</div>
-        {#if selectedQuadrant !== 'grocery'}
-          <div class="quadrant-overlay" tabindex="-1" aria-hidden="true"></div>
-        {/if}
-        {#if selectedQuadrant === 'grocery'}
-          <button class="close-btn" aria-label="Close" on:click|stopPropagation={closeQuadrant}>&times;</button>
-        {/if}
-      </div>
-    </div>
-
-    <!-- Family Chores (full width bottom) -->
+    <!-- Family Chores (bottom-right) -->
     <div class="chores-cell">
       <div class="quadrant bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md p-6 {selectedQuadrant === 'chores' ? 'selected' : ''}" tabindex="0" aria-label="Expand Family Chores" on:click={() => selectQuadrant('chores')}>
         <h2 class="text-xl font-bold mb-4 text-center">Family Chores</h2>
