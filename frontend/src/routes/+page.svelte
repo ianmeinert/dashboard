@@ -39,49 +39,6 @@
 </script>
 
 <style>
-  .quadrant {
-    transition: box-shadow 0.2s, transform 0.2s, z-index 0.2s;
-    cursor: pointer;
-    position: relative;
-    z-index: 1;
-  }
-  .quadrant.selected {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    margin: auto;
-    z-index: 50;
-    background: white;
-    box-shadow: 0 0 0 9999px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.25);
-    border-radius: 1rem;
-    max-width: 700px;
-    max-height: 90vh;
-    width: 95vw;
-    height: 90vh;
-    display: flex;
-    flex-direction: column;
-    animation: popin 0.2s;
-  }
-  @keyframes popin {
-    from { transform: scale(0.95); opacity: 0.7; }
-    to { transform: scale(1); opacity: 1; }
-  }
-  .quadrant .close-btn {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    z-index: 100;
-    background: #f3f4f6;
-    border-radius: 9999px;
-    width: 2.5rem;
-    height: 2.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    border: none;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  }
   .dashboard-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -126,9 +83,50 @@
       grid-row: 4 / 5;
     }
   }
-  .dashboard-grid.focused {
-    pointer-events: none;
-    user-select: none;
+  .quadrant {
+    transition: box-shadow 0.2s, transform 0.2s, z-index 0.2s;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
+  }
+  .quadrant.selected {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    margin: auto;
+    z-index: 50;
+    background: white;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.25);
+    border-radius: 1rem;
+    max-width: 700px;
+    max-height: 90vh;
+    width: 95vw;
+    height: 90vh;
+    display: flex;
+    flex-direction: column;
+    animation: popin 0.2s;
+  }
+  @keyframes popin {
+    from { transform: scale(0.95); opacity: 0.7; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .quadrant .close-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 100;
+    background: #f3f4f6;
+    border-radius: 9999px;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   }
   .quadrant.selected,
   .quadrant.selected * {

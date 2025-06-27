@@ -166,7 +166,7 @@
   $: calendarIds = Array.from(new Set(events.map(e => e.calendarId)));
 </script>
 
-<div class="max-w-2xl mx-auto mt-8 dark:bg-gray-900 dark:text-white rounded-lg relative">
+<div class="w-full sm:max-w-2xl mx-auto mt-8 dark:bg-gray-900 dark:text-white rounded-lg relative overflow-x-auto p-2">
   {#if loading}
     <div class="text-center py-8 text-gray-500 dark:text-gray-300">Loading events…</div>
   {:else}
