@@ -1,19 +1,11 @@
 <script lang="ts">
-  import Calendar from '$lib/components/calendar/Calendar.svelte';
   import GoogleCalendarProvider from '$lib/components/calendar/GoogleCalendarProvider.svelte';
+  import ForecastWidget from '$lib/components/ForecastWidget.svelte';
 
   let selectedQuadrant: string | null = null;
 
   // Keys to force remount
   let familyCalendarKey = 0;
-  let choresCalendarKey = 0;
-
-  // For initial month/year
-  let now = new Date();
-  let familyInitialYear = now.getFullYear();
-  let familyInitialMonth = now.getMonth();
-  let choresInitialYear = now.getFullYear();
-  let choresInitialMonth = now.getMonth();
 
   function selectQuadrant(q: string) {
     if (selectedQuadrant) return; // Prevent selecting another while focused
@@ -21,17 +13,9 @@
     document.body.style.overflow = 'hidden';
   }
   function closeQuadrant() {
-    // On close, reset calendars to current month
-    now = new Date();
+    // On close, reset calendar to current month
     if (selectedQuadrant === 'calendar') {
       familyCalendarKey += 1;
-      familyInitialYear = now.getFullYear();
-      familyInitialMonth = now.getMonth();
-    }
-    if (selectedQuadrant === 'chores') {
-      choresCalendarKey += 1;
-      choresInitialYear = now.getFullYear();
-      choresInitialMonth = now.getMonth();
     }
     selectedQuadrant = null;
     document.body.style.overflow = '';
@@ -42,11 +26,11 @@
   .dashboard-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
+    grid-template-rows: auto auto;
     gap: 1.5rem;
     max-width: 1200px;
     margin: 0 auto;
-    min-height: 80vh;
+    min-height: 0;
   }
   .calendar-cell {
     grid-row: 1 / 2;
@@ -60,12 +44,13 @@
     gap: 1.5rem;
   }
   .forecast-quadrant {
-    flex: 1 1 0;
-    min-height: 0;
+    max-width: 700px;
+    min-width: 420px;
+    margin: 0 auto;
+    /* Removed flex and min-height to allow natural growth */
   }
   .grocery-quadrant {
-    flex: 1 1 0;
-    min-height: 0;
+    /* Removed flex and min-height to allow natural stacking */
   }
   .chores-cell {
     grid-row: 2 / 3;
@@ -149,13 +134,14 @@
 </style>
 
 <div class="min-h-screen bg-gray-50 p-4">
+  <h1 class="text-4xl font-extrabold text-center mb-8 tracking-tight">Family Dashboard</h1>
   <div class="dashboard-grid {selectedQuadrant ? 'focused' : ''}">
     <!-- Family Calendar -->
     <div class="calendar-cell">
-      <div class="quadrant {selectedQuadrant === 'calendar' ? 'selected' : ''}" tabindex="0" aria-label="Expand Family Calendar" on:click={() => selectQuadrant('calendar')}>
+      <div class="quadrant bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md p-6 {selectedQuadrant === 'calendar' ? 'selected' : ''}" tabindex="0" aria-label="Expand Family Calendar" on:click={() => selectQuadrant('calendar')}>
         <h2 class="text-xl font-bold mb-4 text-center">Family Calendar</h2>
         {#key `family-${familyCalendarKey}`}
-          <GoogleCalendarProvider initialYear={familyInitialYear} initialMonth={familyInitialMonth} />
+          <GoogleCalendarProvider />
         {/key}
         {#if selectedQuadrant !== 'calendar'}
           <div class="quadrant-overlay" tabindex="-1" aria-hidden="true"></div>
@@ -168,9 +154,9 @@
 
     <!-- Forecast & Grocery List split vertically -->
     <div class="forecast-cell">
-      <div class="quadrant forecast-quadrant {selectedQuadrant === 'forecast' ? 'selected' : ''}" tabindex="0" aria-label="Expand Todays Forecast" on:click={() => selectQuadrant('forecast')}>
+      <div class="quadrant forecast-quadrant bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md p-6 {selectedQuadrant === 'forecast' ? 'selected' : ''}" tabindex="0" aria-label="Expand Todays Forecast" on:click={() => selectQuadrant('forecast')}>
         <h2 class="text-xl font-bold mb-4 text-center">Todays Forecast</h2>
-        <div class="flex-1 flex items-center justify-center text-gray-400">Weather widget coming soon…</div>
+        <ForecastWidget />
         {#if selectedQuadrant !== 'forecast'}
           <div class="quadrant-overlay" tabindex="-1" aria-hidden="true"></div>
         {/if}
@@ -178,7 +164,7 @@
           <button class="close-btn" aria-label="Close" on:click|stopPropagation={closeQuadrant}>&times;</button>
         {/if}
       </div>
-      <div class="quadrant grocery-quadrant {selectedQuadrant === 'grocery' ? 'selected' : ''}" tabindex="0" aria-label="Expand Grocery List" on:click={() => selectQuadrant('grocery')}>
+      <div class="quadrant grocery-quadrant bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md p-6 {selectedQuadrant === 'grocery' ? 'selected' : ''}" tabindex="0" aria-label="Expand Grocery List" on:click={() => selectQuadrant('grocery')}>
         <h2 class="text-xl font-bold mb-4 text-center">Grocery List</h2>
         <div class="flex-1 flex items-center justify-center text-gray-400">Grocery list coming soon…</div>
         {#if selectedQuadrant !== 'grocery'}
@@ -192,11 +178,19 @@
 
     <!-- Family Chores (full width bottom) -->
     <div class="chores-cell">
-      <div class="quadrant {selectedQuadrant === 'chores' ? 'selected' : ''}" tabindex="0" aria-label="Expand Family Chores" on:click={() => selectQuadrant('chores')}>
+      <div class="quadrant bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md p-6 {selectedQuadrant === 'chores' ? 'selected' : ''}" tabindex="0" aria-label="Expand Family Chores" on:click={() => selectQuadrant('chores')}>
         <h2 class="text-xl font-bold mb-4 text-center">Family Chores</h2>
-        {#key `chores-${choresCalendarKey}`}
-          <Calendar initialYear={choresInitialYear} initialMonth={choresInitialMonth} />
-        {/key}
+        <div class="flex-1 flex items-center justify-center text-gray-400">
+          <div class="text-center">
+            <p class="mb-4">Family chores tracking coming soon…</p>
+            <p class="text-sm">This will include:</p>
+            <ul class="text-sm text-gray-500 mt-2">
+              <li>• Daily/weekly chore assignments</li>
+              <li>• Progress tracking</li>
+              <li>• Reward system</li>
+            </ul>
+          </div>
+        </div>
         {#if selectedQuadrant !== 'chores'}
           <div class="quadrant-overlay" tabindex="-1" aria-hidden="true"></div>
         {/if}

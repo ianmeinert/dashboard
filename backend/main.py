@@ -14,7 +14,7 @@ Version: 0.1.0
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import calendar, monitoring
+from .api import calendar, monitoring, weather
 
 app = FastAPI(
     title="Dashboard API",
@@ -34,6 +34,7 @@ app.add_middleware(
 # Include routers
 app.include_router(calendar.calendar_router, prefix="/api/calendar", tags=["calendar"])
 app.include_router(monitoring.monitoring_router, prefix="/api/monitoring", tags=["monitoring"])
+app.include_router(weather.weather_router, prefix="/api/weather", tags=["weather"])
 
 @app.get("/")
 async def root():
