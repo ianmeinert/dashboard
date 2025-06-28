@@ -10,7 +10,7 @@ import secrets
 from pathlib import Path
 from typing import List, Optional
 
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -93,14 +93,16 @@ class Settings(BaseSettings):
         """Get allowed origins as a list."""
         return [origin.strip() for origin in self.allowed_origins.split(",")]
     
-    @validator("allowed_origins", pre=True)
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
     def parse_allowed_origins(cls, v):
         """Parse comma-separated origins string."""
         if isinstance(v, str):
             return v
         return "http://localhost:5173,http://127.0.0.1:5173"
     
-    @validator("data_dir", "logs_dir", pre=True)
+    @field_validator("data_dir", "logs_dir", mode="before")
+    @classmethod
     def create_directories(cls, v):
         """Ensure directories exist."""
         if isinstance(v, str):
@@ -108,7 +110,8 @@ class Settings(BaseSettings):
         v.mkdir(parents=True, exist_ok=True)
         return v
     
-    @validator("secret_key")
+    @field_validator("secret_key")
+    @classmethod
     def validate_secret_key(cls, v):
         """Ensure secret key is secure in production."""
         if not os.getenv("DEBUG", "false").lower() in ("true", "1", "yes"):
@@ -119,7 +122,8 @@ class Settings(BaseSettings):
                 )
         return v
     
-    @validator("openweathermap_api_key")
+    @field_validator("openweathermap_api_key")
+    @classmethod
     def validate_weather_api_key(cls, v):
         """Warn if weather API key is missing."""
         if not v:
@@ -138,4 +142,4 @@ settings = Settings()
 
 def get_settings() -> Settings:
     """Get application settings."""
-    return settings 
+    return settings
