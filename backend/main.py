@@ -13,17 +13,20 @@ Features:
 - Connection pooling and memory management
 - Comprehensive exception handling
 - Structured logging with file rotation
+- Prometheus metrics for monitoring and alerting
 
 Version: 2.0.0
 """
 
+import asyncio
+import logging
 import time
 import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -32,16 +35,16 @@ from .config import settings
 from .database import close_db, init_db
 from .exceptions import (DashboardException, handle_dashboard_exception,
                          handle_database_error, handle_generic_exception,
-                         handle_http_exception, handle_validation_error)
-from .http_client import http_client
+                         handle_validation_error)
+from .http_client import http_client, weather_client
 from .logging_config import log_request, log_security_event, setup_logging
+from .metrics import (get_metrics, record_health_check, record_rate_limit_hit,
+                      setup_metrics_instrumentator)
 from .security import add_security_headers, get_client_id, rate_limiter
+from .utils.google_calendar import get_upcoming_events
 
 # Setup structured logging
 setup_logging()
-
-# Get logger for this module
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +163,9 @@ async def security_middleware(request: Request, call_next):
         settings.rate_limit_requests, 
         settings.rate_limit_window
     ):
+        # Record rate limit hit in metrics
+        record_rate_limit_hit(client_id)
+        
         # Log rate limit event
         log_security_event(
             event_type="rate_limit_exceeded",
@@ -249,6 +255,33 @@ app.include_router(
     tags=["grocery"]
 )
 
+# Setup Prometheus metrics instrumentator
+if settings.debug or settings.metrics_enabled:
+    try:
+        instrumentator = setup_metrics_instrumentator()
+        instrumentator.instrument(app).expose(app, should_gzip=True)
+        logger.info("Prometheus metrics instrumentator configured")
+    except Exception as e:
+        logger.warning(f"Failed to setup metrics instrumentator: {e}")
+
+# Metrics endpoint
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint."""
+    try:
+        metrics_data = get_metrics()
+        return Response(
+            content=metrics_data,
+            media_type="text/plain; version=0.0.4; charset=utf-8"
+        )
+    except Exception as e:
+        logger.error(f"Error serving metrics: {e}")
+        return Response(
+            content=b"# Error generating metrics\n",
+            media_type="text/plain; version=0.0.4; charset=utf-8",
+            status_code=500
+        )
+
 
 @app.get("/")
 async def root():
@@ -262,22 +295,69 @@ async def root():
             "monitoring": "/api/monitoring",
             "weather": "/api/weather",
             "grocery": "/api/grocery",
+            "health": "/health",
+            "metrics": "/metrics",
             "docs": "/docs" if settings.debug else None,
         }
     }
 
 
+async def check_openweathermap_health() -> dict:
+    """Check OpenWeatherMap API health by fetching weather for Austin, TX."""
+    try:
+        # Austin, TX coordinates
+        result = await weather_client.get_current_weather(lat=30.2672, lon=-97.7431)
+        if result and "weather" in result:
+            return {"status": "healthy"}
+        return {"status": "unhealthy", "error": "No weather data returned"}
+    except Exception as e:
+        return {"status": "unhealthy", "error": str(e)}
+
+async def check_google_calendar_health() -> dict:
+    """Check Google Calendar API health by fetching events for a short range."""
+    try:
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        start = now.isoformat()
+        end = (now + timedelta(minutes=1)).isoformat()
+        events = await get_upcoming_events(start=start, end=end)
+        return {"status": "healthy", "event_count": len(events)}
+    except Exception as e:
+        return {"status": "unhealthy", "error": str(e)}
+
 @app.get("/health")
 async def health():
-    """Health check endpoint."""
+    """Health check endpoint for DB, OpenWeatherMap, Google Calendar, and critical dependencies."""
     from .database import check_db_health
+    start_time = time.time()
     
-    db_healthy = await check_db_health()
+    # Run all checks in parallel
+    db_task = asyncio.create_task(check_db_health())
+    owm_task = asyncio.create_task(check_openweathermap_health())
+    gcal_task = asyncio.create_task(check_google_calendar_health())
+    
+    db_healthy = await db_task
+    owm_result = await owm_task
+    gcal_result = await gcal_task
+    duration = time.time() - start_time
+    
+    # Compose detailed status
+    checks = {
+        "database": {"status": "healthy" if db_healthy else "unhealthy"},
+        "openweathermap": owm_result,
+        "google_calendar": gcal_result
+    }
+    overall = all(v["status"] == "healthy" for v in checks.values())
+    status = "healthy" if overall else "degraded"
+    
+    # Record health check metrics
+    record_health_check(status, duration)
     
     return {
-        "status": "healthy" if db_healthy else "degraded",
-        "database": "healthy" if db_healthy else "unhealthy",
+        "status": status,
+        "checks": checks,
         "version": settings.app_version,
+        "response_time_ms": round(duration * 1000, 2)
     }
 
 

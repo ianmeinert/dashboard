@@ -250,12 +250,23 @@ def add_security_headers(request: Request, response):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     
     # Add CSP header for additional security
-    csp_policy = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline'; "
-        "style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data: https:; "
-        "font-src 'self'; "
-        "connect-src 'self';"
-    )
+    # Allow Swagger UI CDN resources for /docs endpoint
+    if request.url.path == "/docs":
+        csp_policy = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' https://cdn.jsdelivr.net https://unpkg.com; "
+            "connect-src 'self';"
+        )
+    else:
+        csp_policy = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: https:; "
+            "font-src 'self'; "
+            "connect-src 'self';"
+        )
     response.headers["Content-Security-Policy"] = csp_policy 

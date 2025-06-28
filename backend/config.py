@@ -83,6 +83,10 @@ class Settings(BaseSettings):
         default="./data/metrics.db",
         env="METRICS_DB_PATH"
     )
+    prometheus_multiproc_dir: str = Field(
+        default="./tmp/prometheus_multiproc",
+        env="PROMETHEUS_MULTIPROC_DIR"
+    )
     
     # Cache
     cache_enabled: bool = Field(default=True, env="CACHE_ENABLED")
@@ -101,14 +105,16 @@ class Settings(BaseSettings):
             return v
         return "http://localhost:5173,http://127.0.0.1:5173"
     
-    @field_validator("data_dir", "logs_dir", mode="before")
+    @field_validator("data_dir", "logs_dir", "prometheus_multiproc_dir", mode="before")
     @classmethod
     def create_directories(cls, v):
         """Ensure directories exist."""
         if isinstance(v, str):
-            v = Path(v)
-        v.mkdir(parents=True, exist_ok=True)
-        return v
+            path = Path(v)
+        else:
+            path = v
+        path.mkdir(parents=True, exist_ok=True)
+        return str(path)  # Always return a string!
     
     @field_validator("secret_key")
     @classmethod

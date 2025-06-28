@@ -64,9 +64,11 @@ Visit `http://localhost:5173` to see your dashboard!
 
 ### 📊 System Monitoring
 
-- **Health Checks**: Real-time system status
-- **Performance Metrics**: Dashboard and API monitoring
+- **Health Checks**: Real-time system status via `/health` endpoint
+- **Prometheus Metrics**: Comprehensive monitoring via `/metrics` endpoint
+- **Performance Metrics**: Dashboard and API monitoring with custom business metrics
 - **Error Tracking**: Comprehensive error handling and logging
+- **Rate Limiting**: Built-in rate limiting with metrics tracking
 
 ## 🏗️ Architecture
 
@@ -106,6 +108,7 @@ dashboard/
 - [SQLAlchemy](https://sqlalchemy.org/) - Async ORM
 - [SQLite](https://sqlite.org/) - Lightweight database
 - [Pydantic](https://pydantic.dev/) - Data validation
+- [Prometheus](https://prometheus.io/) - Metrics and monitoring
 
 **Integrations:**
 

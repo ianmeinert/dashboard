@@ -16,6 +16,7 @@ from ..database import get_db
 from ..exceptions import (DatabaseException, ExternalAPIException,
                           ValidationException)
 from ..http_client import weather_client
+from ..metrics import record_external_api_request, record_weather_request
 from ..models import WeatherSettings
 from ..schemas.weather import WeatherSettingsCreate, WeatherSettingsResponse
 from ..security import validate_coordinates, validate_location_input
@@ -39,32 +40,41 @@ async def current_weather(
         if lat is not None and lon is not None:
             # Validate coordinates
             resolved_lat, resolved_lon = validate_coordinates(lat, lon)
+            location = f"{lat},{lon}"
         elif city and state:
             # Validate location input
             validate_location_input(city=city, state=state)
             resolved_lat, resolved_lon = await weather_client.geocode_city(
                 city=city, state=state, country=country
             )
+            location = f"{city},{state}"
         elif zip_code:
             # Validate ZIP code
             validate_location_input(zip_code=zip_code)
             resolved_lat, resolved_lon = await weather_client.geocode_zip(
                 zip_code=zip_code, country=country
             )
+            location = zip_code
         else:
             raise ValidationException(
                 "Must provide lat/lon, city/state, or zip_code",
                 details={"required": "One of: coordinates, city+state, or zip_code"}
             )
         
+        # Record weather request metric
+        record_weather_request("success", location)
+        
         return await weather_client.get_current_weather(
             lat=resolved_lat, lon=resolved_lon
         )
     except ValidationException:
+        record_weather_request("validation_error", "unknown")
         raise
     except ValueError as e:
+        record_weather_request("validation_error", "unknown")
         raise ValidationException(str(e))
     except Exception as e:
+        record_weather_request("error", "unknown")
         logger.error(f"Weather API error: {e}", exc_info=True)
         raise ExternalAPIException("OpenWeatherMap", "Failed to fetch current weather data")
 
@@ -84,32 +94,41 @@ async def forecast(
         if lat is not None and lon is not None:
             # Validate coordinates
             resolved_lat, resolved_lon = validate_coordinates(lat, lon)
+            location = f"{lat},{lon}"
         elif city and state:
             # Validate location input
             validate_location_input(city=city, state=state)
             resolved_lat, resolved_lon = await weather_client.geocode_city(
                 city=city, state=state, country=country
             )
+            location = f"{city},{state}"
         elif zip_code:
             # Validate ZIP code
             validate_location_input(zip_code=zip_code)
             resolved_lat, resolved_lon = await weather_client.geocode_zip(
                 zip_code=zip_code, country=country
             )
+            location = zip_code
         else:
             raise ValidationException(
                 "Must provide lat/lon, city/state, or zip_code",
                 details={"required": "One of: coordinates, city+state, or zip_code"}
             )
         
+        # Record weather request metric
+        record_weather_request("success", location)
+        
         return await weather_client.get_forecast(
             lat=resolved_lat, lon=resolved_lon
         )
     except ValidationException:
+        record_weather_request("validation_error", "unknown")
         raise
     except ValueError as e:
+        record_weather_request("validation_error", "unknown")
         raise ValidationException(str(e))
     except Exception as e:
+        record_weather_request("error", "unknown")
         logger.error(f"Weather forecast error: {e}", exc_info=True)
         raise ExternalAPIException("OpenWeatherMap", "Failed to fetch forecast data")
 
