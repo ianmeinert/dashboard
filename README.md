@@ -17,7 +17,7 @@ It is optimized for touchscreen kiosks, wall-mounted tablets, or any shared disp
 
 - **Modular Dashboard Layout**: Quadrants for calendar, weather, grocery list, and chores
 - **Google Calendar Integration**: Real-time family events
-- **Weather Widget**: Current and 5-day forecast by geolocation, city/state, or zip code
+- **Weather Widget**: Current and 5-day forecast by geolocation, city/state, or zip code, with instant dashboard updates when a new default location is set
 - **Grocery List**: Add, edit, delete, and check off items with priority, category, and notes
 - **Modern Database Backend**: Grocery list uses async SQLAlchemy with SQLite for robust, persistent storage (auto-migrates from legacy JSON)
 - **Responsive UI**: Works on tablets, desktops, and large displays
@@ -30,6 +30,7 @@ It is optimized for touchscreen kiosks, wall-mounted tablets, or any shared disp
 - **Frontend**: SvelteKit (TypeScript, Tailwind CSS)
   - Handles UI, user interaction, and API communication
   - Provides a responsive, interactive dashboard experience
+  - Uses Svelte events and props for real-time parent-child state sync (e.g., weather location updates)
   - See [frontend/README.md](./frontend/README.md) for details
 
 - **Backend**: FastAPI (Python)
@@ -110,6 +111,11 @@ It is optimized for touchscreen kiosks, wall-mounted tablets, or any shared disp
   - Friendly empty state with "Add Item" button
   - Full-featured add/edit/delete in expanded view
   - Priority, category, and notes support
+
+## Weather Widget Improvements
+
+- **Instant dashboard updates:** When a user sets a new default location, the widget emits a `locationSet` event with the canonical location, and the parent updates the prop. The widget always shows the latest location, even after closing and reopening, without a full page reload.
+- **Error handling:** 422 errors are avoided by sending only the expected fields to the backend.
 
 ## Extending the Dashboard
 

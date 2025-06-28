@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte';
   import SetDashboardLocationModal from './SetDashboardLocationModal.svelte';
 
   let city = '';
@@ -15,6 +15,11 @@
   let preferredLocation: any = null;
   let pendingLocation: any = null;
   let showSetDefaultModal = false;
+  let hasSearched = false;
+
+  const dispatch = createEventDispatcher();
+
+  export let dashboardLocation: any = null;
 
   async function fetchWeather(cityOverride?: string, stateOverride?: string) {
     loading = true;
@@ -77,6 +82,31 @@
 
   function handleSubmit(e: Event) {
     e.preventDefault();
+    // If all fields are blank, use geolocation
+    if (!city && !state && !zip) {
+      if (navigator.geolocation) {
+        loading = true;
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            lat = pos.coords.latitude;
+            lon = pos.coords.longitude;
+            city = '';
+            state = '';
+            zip = '';
+            fetchWeather();
+            hasSearched = true;
+          },
+          (err) => {
+            console.warn('Geolocation error:', err);
+            useDefaultLocation();
+          },
+          { enableHighAccuracy: false, timeout: 5000 }
+        );
+      } else {
+        useDefaultLocation();
+      }
+      return;
+    }
     lat = null;
     lon = null;
     pendingLocation = {
@@ -84,9 +114,10 @@
       state: state || undefined,
       zip_code: zip || undefined,
       lat: lat !== null ? String(lat) : undefined,
-      lon: lon !== null ? String(lon) : undefined
+      lon: lon !== null ? String(lon) : null
     };
     fetchWeatherWithLocation(pendingLocation);
+    hasSearched = true;
   }
 
   function useDefaultLocation() {
@@ -138,19 +169,33 @@
     }
   }
 
+  function cleanLocation(loc: any) {
+    return {
+      city: loc.city || undefined,
+      state: loc.state || undefined,
+      zip_code: loc.zip_code || undefined,
+      lat: loc.lat != null ? String(loc.lat) : undefined,
+      lon: loc.lon != null ? String(loc.lon) : undefined,
+    };
+  }
+
   async function setPreferredLocation(loc: any) {
     try {
+      const payload = cleanLocation(loc);
       const res = await fetch('/api/weather/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(loc)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
-        preferredLocation = await res.json();
+        const saved = await res.json();
+        preferredLocation = saved;
+        return saved;
       }
     } catch (e) {
       console.warn('Failed to set preferred location:', e);
     }
+    return null;
   }
 
   async function fetchWeatherWithLocation(loc?: any) {
@@ -165,7 +210,16 @@
   }
 
   onMount(() => {
-    fetchPreferredLocation();
+    if (dashboardLocation) {
+      city = dashboardLocation.city || '';
+      state = dashboardLocation.state || '';
+      zip = dashboardLocation.zip_code || '';
+      lat = dashboardLocation.lat ? parseFloat(dashboardLocation.lat) : null;
+      lon = dashboardLocation.lon ? parseFloat(dashboardLocation.lon) : null;
+      fetchWeather();
+    } else {
+      fetchPreferredLocation();
+    }
   });
 
   onDestroy(() => {
@@ -174,9 +228,13 @@
 
   // Confirm and set as preferred location
   async function confirmSetPreferred() {
-    await setPreferredLocation(pendingLocation);
-    // Re-fetch with new preferred location
-    await fetchPreferredLocation();
+    const saved = await setPreferredLocation(pendingLocation);
+    if (saved) {
+      // Fetch the canonical value from the backend
+      await fetchPreferredLocation();
+      console.debug('[Forecast] New preferred location from backend:', preferredLocation);
+      dispatch('locationSet', preferredLocation);
+    }
   }
 
   // Cancel confirmation, keep previous preferred location
@@ -189,18 +247,34 @@
     }
   }
 
-  function handleSetDefaultLocation() {
-    confirmSetPreferred();
+  async function handleSetDefaultLocation() {
     showSetDefaultModal = false;
+    await confirmSetPreferred();
+    dispatch('defaultLocationSet');
+    dispatch('close');
   }
 
-  function closeSetDefaultModal() {
-    cancelSetPreferred();
+  async function closeSetDefaultModal() {
     showSetDefaultModal = false;
+    await cancelSetPreferred();
+    await fetchPreferredLocation();
+    dispatch('close');
+  }
+
+  function handleWidgetClose() {
+    if (hasSearched) {
+      showSetDefaultModal = true;
+    } else {
+      dispatch('close');
+    }
+  }
+
+  export function requestClose() {
+    handleWidgetClose();
   }
 </script>
 
-<div class="max-w-xl mx-auto" style="max-width: 700px;">
+<div class="max-w-xl mx-auto relative" style="max-width: 700px;">
   <form class="mb-4" on:submit|preventDefault={handleSubmit}>
     <div class="search-bar flex w-full p-4 bg-white dark:bg-gray-900 rounded-lg shadow">
       <input
@@ -236,10 +310,8 @@
 
   {#if current}
     <div class="text-center text-gray-600 dark:text-gray-300 mb-2 text-lg font-medium">
-      {#if current.name && current.sys && current.sys.country}
-        {current.name}{current.state ? `, ${current.state}` : ''}, {current.sys.country}
-      {:else if current.name}
-        {current.name}
+      {#if current.name}
+        {current.name}{state ? `, ${state}` : ''}
       {/if}
     </div>
   {/if}
@@ -283,6 +355,8 @@
     open={showSetDefaultModal}
     onConfirm={handleSetDefaultLocation}
     onCancel={closeSetDefaultModal}
+    title="Set as dashboard location?"
+    message="Do you want to set this location as your dashboard's default?"
   />
   <!-- TODO: Add geolocation, AQI, expand/collapse, better error handling -->
 </div>

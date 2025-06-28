@@ -23,6 +23,8 @@ A FastAPI-based backend service for managing kiosk dashboard functionality with 
 
 - `GET /api/weather/current` - Get current weather by lat/lon, city/state, or zip code
 - `GET /api/weather/forecast` - Get 5-day forecast by lat/lon, city/state, or zip code
+- `GET /api/weather/settings` - Get the current preferred weather location
+- `POST /api/weather/settings` - Set the preferred weather location (expects only `city`, `state`, `zip_code`, `lat`, `lon` as strings or omitted)
 
 #### Weather Endpoint Usage Examples
 
@@ -35,6 +37,18 @@ A FastAPI-based backend service for managing kiosk dashboard functionality with 
 - By zip code:
   - `/api/weather/current?zip_code=78701`
   - `/api/weather/forecast?zip_code=78701`
+
+#### Weather Settings Example
+
+```json
+{
+  "city": "Round Rock",
+  "state": "TX",
+  "zip_code": "78665",
+  "lat": "30.5083",
+  "lon": "-97.6789"
+}
+```
 
 ### Grocery List
 
@@ -76,6 +90,12 @@ A FastAPI-based backend service for managing kiosk dashboard functionality with 
 - The backend supports weather queries by geolocation (lat/lon), city/state, or zip code.
 - If geolocation is not available, the frontend falls back to a default location (Austin, TX).
 - All endpoints provide robust error handling and user-friendly error messages.
+
+## Weather Settings API
+
+- The backend is the source of truth for the preferred location.
+- The frontend always fetches the canonical value after a change.
+- Only the fields `city`, `state`, `zip_code`, `lat`, and `lon` (all as strings or omitted) are accepted in POST requests.
 
 ## Quick Start
 

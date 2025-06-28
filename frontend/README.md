@@ -5,7 +5,7 @@ A modern, responsive SvelteKit application for displaying kiosk dashboard inform
 ## Features
 
 - **Real-time Calendar Display**: Show upcoming events from Google Calendar
-- **Weather Widget**: Current weather and 5-day forecast by geolocation, city/state, or zip code, with robust fallback logic
+- **Weather Widget**: Current weather and 5-day forecast by geolocation, city/state, or zip code, with robust fallback logic and instant dashboard updates
 - **Responsive Design**: Optimized for kiosk displays and various screen sizes
 - **Modern UI**: Clean, accessible interface with Tailwind CSS
 - **Card-Style Widgets**: Visually distinct dashboard quadrants with card boundaries
@@ -18,6 +18,13 @@ A modern, responsive SvelteKit application for displaying kiosk dashboard inform
 - If geolocation is denied/unavailable, falls back to Austin, TX (not shown in input fields).
 - Users can search by city/state or zip code; input fields remain empty unless user enters a value.
 - Robust error handling and user-friendly messages for API/network issues.
+- **Instant dashboard updates:** When a user sets a new default location, the widget emits a `locationSet` event with the canonical location, and the parent updates the prop. The widget always shows the latest location, even after closing and reopening, without a full page reload.
+- **Error handling:** 422 errors are avoided by sending only the expected fields to the backend.
+
+## Svelte Event/Prop Pattern
+
+- The dashboard uses Svelte events and props for real-time parent-child state sync (e.g., weather location updates).
+- When a child widget updates a value (like the weather location), it emits an event with the new data, and the parent updates its state and passes it back down as a prop.
 
 ## Tech Stack
 

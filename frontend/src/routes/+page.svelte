@@ -7,6 +7,10 @@
 
   // Keys to force remount
   let familyCalendarKey = 0;
+  let forecastWidgetKey = 0;
+
+  let forecastWidgetRef: any;
+  let dashboardForecastLocation: any = null;
 
   function selectQuadrant(q: string) {
     if (selectedQuadrant) return; // Prevent selecting another while focused
@@ -20,6 +24,13 @@
     }
     selectedQuadrant = null;
     document.body.style.overflow = '';
+  }
+  function refreshForecastWidget() {
+    forecastWidgetKey += 1;
+  }
+  function handleLocationSet(event: any) {
+    dashboardForecastLocation = event.detail;
+    forecastWidgetKey += 1;
   }
 </script>
 
@@ -143,12 +154,20 @@
     <div class="forecast-cell">
       <div class="quadrant forecast-quadrant bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md p-6 {selectedQuadrant === 'forecast' ? 'selected' : ''}" tabindex="0" aria-label="Expand Todays Forecast" on:click={() => selectQuadrant('forecast')}>
         <h2 class="text-xl font-bold mb-4 text-center">Todays Forecast</h2>
-        <ForecastWidget />
+        {#key forecastWidgetKey}
+          <ForecastWidget
+            bind:this={forecastWidgetRef}
+            on:close={closeQuadrant}
+            on:defaultLocationSet={refreshForecastWidget}
+            on:locationSet={handleLocationSet}
+            dashboardLocation={dashboardForecastLocation}
+          />
+        {/key}
         {#if selectedQuadrant !== 'forecast'}
           <div class="quadrant-overlay" tabindex="-1" aria-hidden="true"></div>
         {/if}
         {#if selectedQuadrant === 'forecast'}
-          <button class="close-btn" aria-label="Close" on:click|stopPropagation={closeQuadrant}>&times;</button>
+          <button class="close-btn" aria-label="Close" on:click|stopPropagation={() => forecastWidgetRef.requestClose()}>&times;</button>
         {/if}
       </div>
     </div>
