@@ -11,3 +11,6 @@ export * from './components/calendar/EventChip.svelte';
 export * from './components/calendar/EventPopup.svelte';
 export * from './components/calendar/OverflowPopup.svelte';
 
+// Grocery list exports
+export * from './stores/grocery';
+

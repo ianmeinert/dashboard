@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import SetDashboardLocationModal from './SetDashboardLocationModal.svelte';
 
   let city = '';
   let state = '';
@@ -11,6 +12,9 @@
   let forecast: any[] = [];
   let lat: number | null = null;
   let lon: number | null = null;
+  let preferredLocation: any = null;
+  let pendingLocation: any = null;
+  let showSetDefaultModal = false;
 
   async function fetchWeather(cityOverride?: string, stateOverride?: string) {
     loading = true;
@@ -75,7 +79,14 @@
     e.preventDefault();
     lat = null;
     lon = null;
-    fetchWeather();
+    pendingLocation = {
+      city: city || undefined,
+      state: state || undefined,
+      zip_code: zip || undefined,
+      lat: lat !== null ? String(lat) : undefined,
+      lon: lon !== null ? String(lon) : undefined
+    };
+    fetchWeatherWithLocation(pendingLocation);
   }
 
   function useDefaultLocation() {
@@ -83,15 +94,37 @@
     lon = null;
     zip = '';
     // Do not update city/state input fields
-    fetchWeather('Austin', 'TX');
+    fetchWeather('Washington', 'DC');
   }
 
-  onMount(() => {
+  async function fetchPreferredLocation() {
+    try {
+      const res = await fetch('/api/weather/settings');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.city || data.state || data.zip_code || data.lat || data.lon) {
+          preferredLocation = data;
+          city = data.city || '';
+          state = data.state || '';
+          zip = data.zip_code || '';
+          lat = data.lat ? parseFloat(data.lat) : null;
+          lon = data.lon ? parseFloat(data.lon) : null;
+          await fetchWeather();
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch preferred location:', e);
+    }
+    // If not set, try geolocation
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           lat = pos.coords.latitude;
           lon = pos.coords.longitude;
+          city = '';
+          state = '';
+          zip = '';
           fetchWeather();
         },
         (err) => {
@@ -103,7 +136,68 @@
     } else {
       useDefaultLocation();
     }
+  }
+
+  async function setPreferredLocation(loc: any) {
+    try {
+      const res = await fetch('/api/weather/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(loc)
+      });
+      if (res.ok) {
+        preferredLocation = await res.json();
+      }
+    } catch (e) {
+      console.warn('Failed to set preferred location:', e);
+    }
+  }
+
+  async function fetchWeatherWithLocation(loc?: any) {
+    if (loc) {
+      city = loc.city || '';
+      state = loc.state || '';
+      zip = loc.zip_code || '';
+      lat = loc.lat ? parseFloat(loc.lat) : null;
+      lon = loc.lon ? parseFloat(loc.lon) : null;
+    }
+    await fetchWeather();
+  }
+
+  onMount(() => {
+    fetchPreferredLocation();
   });
+
+  onDestroy(() => {
+    showSetDefaultModal = false;
+  });
+
+  // Confirm and set as preferred location
+  async function confirmSetPreferred() {
+    await setPreferredLocation(pendingLocation);
+    // Re-fetch with new preferred location
+    await fetchPreferredLocation();
+  }
+
+  // Cancel confirmation, keep previous preferred location
+  function cancelSetPreferred() {
+    // Restore previous preferred location
+    if (preferredLocation) {
+      fetchWeatherWithLocation(preferredLocation);
+    } else {
+      fetchPreferredLocation();
+    }
+  }
+
+  function handleSetDefaultLocation() {
+    confirmSetPreferred();
+    showSetDefaultModal = false;
+  }
+
+  function closeSetDefaultModal() {
+    cancelSetPreferred();
+    showSetDefaultModal = false;
+  }
 </script>
 
 <div class="max-w-xl mx-auto" style="max-width: 700px;">
@@ -184,6 +278,12 @@
       </div>
     </div>
   {/if}
+
+  <SetDashboardLocationModal
+    open={showSetDefaultModal}
+    onConfirm={handleSetDefaultLocation}
+    onCancel={closeSetDefaultModal}
+  />
   <!-- TODO: Add geolocation, AQI, expand/collapse, better error handling -->
 </div>
 

@@ -8,7 +8,7 @@ The Family Dashboard is designed to serve as a central hub for:
 
 - Family calendar and event management (Google Calendar integration)
 - Weather and forecast information (OpenWeatherMap integration)
-- Grocery list and family chores (extensible placeholders)
+- Grocery list and family chores (robust, database-backed, with modern UX)
 - System health and monitoring (for kiosk or smart home use)
 
 It is optimized for touchscreen kiosks, wall-mounted tablets, or any shared display.
@@ -18,6 +18,8 @@ It is optimized for touchscreen kiosks, wall-mounted tablets, or any shared disp
 - **Modular Dashboard Layout**: Quadrants for calendar, weather, grocery list, and chores
 - **Google Calendar Integration**: Real-time family events
 - **Weather Widget**: Current and 5-day forecast by geolocation, city/state, or zip code
+- **Grocery List**: Add, edit, delete, and check off items with priority, category, and notes
+- **Modern Database Backend**: Grocery list uses async SQLAlchemy with SQLite for robust, persistent storage (auto-migrates from legacy JSON)
 - **Responsive UI**: Works on tablets, desktops, and large displays
 - **Card-Style Widgets**: Visually distinct, modern look
 - **Robust Error Handling**: User-friendly messages and fallbacks
@@ -31,8 +33,9 @@ It is optimized for touchscreen kiosks, wall-mounted tablets, or any shared disp
   - See [frontend/README.md](./frontend/README.md) for details
 
 - **Backend**: FastAPI (Python)
-  - Provides RESTful APIs for calendar, weather, and monitoring
+  - Provides RESTful APIs for calendar, weather, monitoring, and grocery list
   - Integrates with Google Calendar and OpenWeatherMap
+  - **Grocery list uses async SQLAlchemy ORM with SQLite** (see [backend/README.md](./backend/README.md))
   - Handles authentication, data aggregation, and error handling
   - See [backend/README.md](./backend/README.md) for details
 
@@ -50,6 +53,7 @@ It is optimized for touchscreen kiosks, wall-mounted tablets, or any shared disp
 
 3. **Set up the backend:**
    - See [backend/README.md](./backend/README.md) for setup and running instructions
+   - **On first run, any legacy grocery data in JSON will be auto-migrated to the database.**
 
 4. **Set up the frontend:**
    - See [frontend/README.md](./frontend/README.md) for setup and running instructions
@@ -95,6 +99,17 @@ It is optimized for touchscreen kiosks, wall-mounted tablets, or any shared disp
 - The file is already in `.gitignore` to prevent accidental commits
 - Store credentials securely and restrict file permissions
 - Use environment variables for production deployments
+
+## Grocery List Improvements
+
+- **Database-backed:** All grocery items are stored in `backend/data/dashboard.db` (SQLite), not a JSON file.
+- **Automatic migration:** On first run, any existing grocery items in the old JSON file are migrated to the database.
+- **Modern async API:** All grocery endpoints use async SQLAlchemy for performance and reliability.
+- **Improved UX:**
+  - Compact list view in dashboard mode
+  - Friendly empty state with "Add Item" button
+  - Full-featured add/edit/delete in expanded view
+  - Priority, category, and notes support
 
 ## Extending the Dashboard
 

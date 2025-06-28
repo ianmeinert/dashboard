@@ -1,11 +1,12 @@
 # Kiosk Dashboard Backend
 
-A FastAPI-based backend service for managing kiosk dashboard functionality with Google Calendar integration and weather/forecast support.
+A FastAPI-based backend service for managing kiosk dashboard functionality with Google Calendar integration, weather/forecast support, and a robust, database-backed grocery list.
 
 ## Features
 
 - **Google Calendar Integration**: Fetch upcoming events via OAuth2 authentication
 - **Weather & Forecast API**: Fetch current weather and 5-day forecast by geolocation (lat/lon), city/state, or zip code
+- **Grocery List API**: Add, edit, delete, and check off grocery items with priority, category, and notes (async SQLAlchemy + SQLite)
 - **RESTful API**: Clean, documented endpoints following OpenAPI standards
 - **Security**: Secure credential management and OAuth2 flow
 - **Monitoring**: Health checks and system monitoring endpoints
@@ -34,6 +35,36 @@ A FastAPI-based backend service for managing kiosk dashboard functionality with 
 - By zip code:
   - `/api/weather/current?zip_code=78701`
   - `/api/weather/forecast?zip_code=78701`
+
+### Grocery List
+
+- `GET /api/grocery/` - Get all grocery items
+- `POST /api/grocery/` - Add new grocery item
+- `GET /api/grocery/{item_id}` - Get specific item
+- `PUT /api/grocery/{item_id}` - Update item
+- `DELETE /api/grocery/{item_id}` - Delete item
+- `PATCH /api/grocery/{item_id}/toggle` - Toggle completion status
+- `DELETE /api/grocery/` - Clear all completed items
+
+#### Grocery List Data Model
+
+- All grocery items are stored in `backend/data/dashboard.db` (SQLite) using async SQLAlchemy ORM.
+- On first run, any legacy grocery data in `grocery_list.json` is automatically migrated to the database.
+- Example item:
+
+```json
+{
+  "id": 1,
+  "name": "Bananas",
+  "quantity": "2 lbs",
+  "category": "Produce",
+  "notes": "",
+  "priority": "medium",
+  "completed": false,
+  "created_at": "2024-07-01T12:34:56.789Z",
+  "updated_at": "2024-07-01T12:34:56.789Z"
+}
+```
 
 ### Monitoring
 
@@ -180,6 +211,32 @@ Query Parameters:
 }
 ```
 
+### Grocery List Endpoint
+
+**GET** `/api/grocery/`
+
+Retrieve all grocery items (optionally filter by completion status).
+
+**POST** `/api/grocery/`
+
+Add a new grocery item (fields: name, quantity, category, notes, priority).
+
+**PUT** `/api/grocery/{item_id}`
+
+Update an existing grocery item.
+
+**PATCH** `/api/grocery/{item_id}/toggle`
+
+Toggle completion status.
+
+**DELETE** `/api/grocery/{item_id}`
+
+Delete a grocery item.
+
+**DELETE** `/api/grocery/`
+
+Clear all completed items.
+
 ## Development
 
 ### Project Structure
@@ -189,33 +246,37 @@ backend/
 ├── api/                 # API route modules
 │   ├── calendar.py     # Calendar endpoints
 │   ├── monitoring.py   # Monitoring endpoints
-│   └── weather.py      # Weather endpoints
+│   ├── weather.py      # Weather endpoints
+│   └── grocery.py      # Grocery list endpoints (async SQLAlchemy)
 ├── schemas/            # Pydantic models
-│   └── calendar.py     # Calendar data models
+│   ├── calendar.py     # Calendar data models
+│   └── grocery.py      # Grocery data models
+├── models.py           # SQLAlchemy ORM models and async DB setup
 ├── utils/              # Utility functions
 │   ├── google_calendar.py  # Google Calendar integration
 │   ├── monitoring.py       # Monitoring utilities
 │   ├── sync_token_db.py    # Token management
 │   └── weather.py          # Weather/AQI utilities
-├── data/               # Data storage (credentials, tokens)
-├── main.py             # FastAPI application entry point
-├── requirements.txt    # Python dependencies
-└── README.md           # This file
+├── data/               # Data storage (credentials, tokens, SQLite DB)
+│   ├── credentials.json
+│   ├── token.json
+│   ├── dashboard.db    # SQLite database for all persistent data
+│   └── grocery_list.json.migrated.json (legacy, after migration)
+├── main.py             # FastAPI app entry point
+└── requirements.txt    # Python dependencies
 ```
 
-### Running Tests
+## Grocery List Improvements
 
-```bash
-# Install test dependencies
-pip install pytest pytest-asyncio httpx
+- **Database-backed:** All grocery items are stored in `backend/data/dashboard.db` (SQLite), not a JSON file.
+- **Automatic migration:** On first run, any existing grocery items in the old JSON file are migrated to the database.
+- **Modern async API:** All grocery endpoints use async SQLAlchemy for performance and reliability.
+- **Improved UX:**
+  - Compact list view in dashboard mode
+  - Friendly empty state with "Add Item" button
+  - Full-featured add/edit/delete in expanded view
+  - Priority, category, and notes support
 
-# Run tests
-pytest
+## License
 
-# Run with coverage
-pytest --cov=api --cov=utils --cov-report=html
-```
-
-### Code Quality
-
-```
+[Add your license information here]

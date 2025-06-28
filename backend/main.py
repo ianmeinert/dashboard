@@ -6,20 +6,33 @@ OAuth2 credentials are stored locally. Events are fetched live from Google API.
 
 Features:
 - /api/calendar/events: Get upcoming events (read-only)
+- /api/grocery: Manage grocery list items
 
-Author: Your Name
 Version: 0.1.0
 """
+
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import calendar, monitoring, weather
+from .api import calendar, grocery, monitoring, weather
+from .api.grocery import migrate_json_to_db
+from .models import init_db
+
+
+async def lifespan(app: FastAPI):
+    # Run DB initialization and migration at startup
+    await init_db()
+    await migrate_json_to_db()
+    yield
+    # (Optional) Add shutdown logic here
 
 app = FastAPI(
     title="Dashboard API",
     description="Backend API for the touchscreen dashboard",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Add CORS middleware
@@ -35,6 +48,7 @@ app.add_middleware(
 app.include_router(calendar.calendar_router, prefix="/api/calendar", tags=["calendar"])
 app.include_router(monitoring.monitoring_router, prefix="/api/monitoring", tags=["monitoring"])
 app.include_router(weather.weather_router, prefix="/api/weather", tags=["weather"])
+app.include_router(grocery.grocery_router, prefix="/api/grocery", tags=["grocery"])
 
 @app.get("/")
 async def root():
@@ -44,7 +58,9 @@ async def root():
         "version": "1.0.0",
         "endpoints": {
             "calendar": "/api/calendar",
-            "monitoring": "/api/monitoring"
+            "monitoring": "/api/monitoring",
+            "weather": "/api/weather",
+            "grocery": "/api/grocery"
         }
     }
 

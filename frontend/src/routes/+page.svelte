@@ -1,6 +1,7 @@
 <script lang="ts">
   import GoogleCalendarProvider from '$lib/components/calendar/GoogleCalendarProvider.svelte';
   import ForecastWidget from '$lib/components/ForecastWidget.svelte';
+  import GroceryList from '$lib/components/GroceryList.svelte';
 
   let selectedQuadrant: string | null = null;
 
@@ -156,7 +157,7 @@
     <div class="grocery-cell">
       <div class="quadrant grocery-quadrant bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md p-6 {selectedQuadrant === 'grocery' ? 'selected' : ''}" tabindex="0" aria-label="Expand Grocery List" on:click={() => selectQuadrant('grocery')}>
         <h2 class="text-xl font-bold mb-4 text-center">Grocery List</h2>
-        <div class="flex-1 flex items-center justify-center text-gray-400">Grocery list coming soon…</div>
+        <GroceryList compact={selectedQuadrant !== 'grocery'} onShowAdd={() => selectQuadrant('grocery')} />
         {#if selectedQuadrant !== 'grocery'}
           <div class="quadrant-overlay" tabindex="-1" aria-hidden="true"></div>
         {/if}
