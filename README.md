@@ -1,132 +1,295 @@
-# Family Dashboard Project
+# Family Dashboard
 
-A modern, modular, and extensible dashboard for home, family, or shared spaces. This project combines a SvelteKit frontend and a FastAPI backend to provide a real-time, interactive dashboard experience for family organization, scheduling, and daily information.
+A modern, modular dashboard for home and family organization built with SvelteKit and FastAPI.
 
-## Purpose
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://python.org)
+[![Node.js](https://img.shields.io/badge/node-18+-green.svg)](https://nodejs.org)
+[![SvelteKit](https://img.shields.io/badge/SvelteKit-2.0+-orange.svg)](https://kit.svelte.dev)
 
-The Family Dashboard is designed to serve as a central hub for:
+## 🚀 Quick Start
 
-- Family calendar and event management (Google Calendar integration)
-- Weather and forecast information (OpenWeatherMap integration)
-- Grocery list and family chores (robust, database-backed, with modern UX)
-- System health and monitoring (for kiosk or smart home use)
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd dashboard
 
-It is optimized for touchscreen kiosks, wall-mounted tablets, or any shared display.
+# Set up credentials (see Credentials section below)
+cp templates/credentials_template.json backend/data/credentials.json
+# Edit backend/data/credentials.json with your API keys
 
-## Main Features
+# Start the backend
+cd backend
+uv venv
+.venv\Scripts\activate  # Windows
+source .venv/bin/activate  # Linux/macOS
+uv pip install -r requirements.txt
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-- **Modular Dashboard Layout**: Quadrants for calendar, weather, grocery list, and chores
-- **Google Calendar Integration**: Real-time family events
-- **Weather Widget**: Current and 5-day forecast by geolocation, city/state, or zip code, with instant dashboard updates when a new default location is set
-- **Grocery List**: Add, edit, delete, and check off items with priority, category, and notes
-- **Modern Database Backend**: Grocery list uses async SQLAlchemy with SQLite for robust, persistent storage (auto-migrates from legacy JSON)
-- **Responsive UI**: Works on tablets, desktops, and large displays
-- **Card-Style Widgets**: Visually distinct, modern look
-- **Robust Error Handling**: User-friendly messages and fallbacks
-- **Extensible**: Add more widgets or integrations as needed
+# In a new terminal, start the frontend
+cd frontend
+npm install
+npm run dev
+```
 
-## Architecture
+Visit `http://localhost:5173` to see your dashboard!
 
-- **Frontend**: SvelteKit (TypeScript, Tailwind CSS)
-  - Handles UI, user interaction, and API communication
-  - Provides a responsive, interactive dashboard experience
-  - Uses Svelte events and props for real-time parent-child state sync (e.g., weather location updates)
-  - See [frontend/README.md](./frontend/README.md) for details
+**📚 Need detailed setup instructions?** Check out our [Getting Started Guide](docs/getting-started.md)
 
-- **Backend**: FastAPI (Python)
-  - Provides RESTful APIs for calendar, weather, monitoring, and grocery list
-  - Integrates with Google Calendar and OpenWeatherMap
-  - **Grocery list uses async SQLAlchemy ORM with SQLite** (see [backend/README.md](./backend/README.md))
-  - Handles authentication, data aggregation, and error handling
-  - See [backend/README.md](./backend/README.md) for details
+## 📋 Features
 
-## Quick Start
+### 🗓️ Calendar Integration
 
-1. **Clone the repository:**
+- **Google Calendar Sync**: Real-time family events and appointments
+- **OAuth2 Authentication**: Secure, token-based access
+- **Event Display**: Clean, readable event cards with details
 
-   ```bash
-   git clone <your-repo-url>
-   cd dashboard
-   ```
+### 🌤️ Weather Widget
 
-2. **Set up credentials:**
-   - See [Credentials Setup](#credentials-setup) below for Google Calendar and OpenWeatherMap configuration
+- **Current Conditions**: Real-time weather data
+- **5-Day Forecast**: Extended weather predictions
+- **Location Management**: Geolocation, city/state, or zip code lookup
+- **Persistent Settings**: Remembers your preferred location
 
-3. **Set up the backend:**
-   - See [backend/README.md](./backend/README.md) for setup and running instructions
-   - **On first run, any legacy grocery data in JSON will be auto-migrated to the database.**
+### 🛒 Grocery List
 
-4. **Set up the frontend:**
-   - See [frontend/README.md](./frontend/README.md) for setup and running instructions
+- **Smart Management**: Add, edit, delete, and check off items
+- **Categories & Priorities**: Organize with categories and priority levels
+- **Database Storage**: Robust SQLite backend with async SQLAlchemy
+- **Auto-Migration**: Seamless upgrade from legacy JSON storage
 
-5. **Open the dashboard:**
-   - By default, the frontend runs at `http://localhost:5173` and the backend at `http://localhost:8000`
+### 📊 System Monitoring
 
-## Credentials Setup
+- **Health Checks**: Real-time system status
+- **Performance Metrics**: Dashboard and API monitoring
+- **Error Tracking**: Comprehensive error handling and logging
 
-### Google Calendar Setup
+## 🏗️ Architecture
 
-1. **Create a Google Cloud Project:**
-   - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Create a new project or select an existing one
-   - Enable the Google Calendar API
+```
+dashboard/
+├── frontend/          # SvelteKit application
+│   ├── src/
+│   │   ├── lib/components/  # Reusable UI components
+│   │   ├── stores/          # State management
+│   │   └── routes/          # Page routes
+│   └── package.json
+├── backend/           # FastAPI application
+│   ├── api/           # API endpoints
+│   ├── models.py      # Database models
+│   ├── schemas/       # Pydantic schemas
+│   └── requirements.txt
+├── docs/              # 📚 Comprehensive documentation
+│   ├── getting-started.md
+│   ├── configuration.md
+│   ├── troubleshooting.md
+│   └── features/
+└── data/              # Shared data storage
+```
 
-2. **Create OAuth2 Credentials:**
-   - Go to "APIs & Services" > "Credentials"
-   - Click "Create Credentials" > "OAuth 2.0 Client IDs"
-   - Choose "Desktop application" as the application type
-   - Download the credentials file
+### Technology Stack
 
-3. **Get OpenWeatherMap API Key:**
+**Frontend:**
+
+- [SvelteKit](https://kit.svelte.dev/) - Full-stack web framework
+- [TypeScript](https://www.typescriptlang.org/) - Type safety
+- [Tailwind CSS](https://tailwindcss.com/) - Utility-first styling
+- [Vite](https://vitejs.dev/) - Build tool and dev server
+
+**Backend:**
+
+- [FastAPI](https://fastapi.tiangolo.com/) - Modern Python web framework
+- [SQLAlchemy](https://sqlalchemy.org/) - Async ORM
+- [SQLite](https://sqlite.org/) - Lightweight database
+- [Pydantic](https://pydantic.dev/) - Data validation
+
+**Integrations:**
+
+- [Google Calendar API](https://developers.google.com/calendar) - Event management
+- [OpenWeatherMap API](https://openweathermap.org/api) - Weather data
+
+## 🔧 Setup
+
+### Prerequisites
+
+- **Python 3.8+** with [uv](https://github.com/astral-sh/uv) (recommended) or pip
+- **Node.js 18+** with npm, yarn, or pnpm
+- **Google Cloud Platform** account for Calendar API
+- **OpenWeatherMap** account for weather data
+
+### Credentials Setup
+
+1. **Google Calendar Setup:**
+   - Create a project in [Google Cloud Console](https://console.cloud.google.com/)
+   - Enable Google Calendar API
+   - Create OAuth2 credentials (Desktop application)
+   - Download credentials file
+
+2. **OpenWeatherMap Setup:**
    - Sign up at [OpenWeatherMap](https://openweathermap.org/api)
-   - Get your free API key from your account dashboard
+   - Get your free API key
 
-4. **Configure Credentials:**
-   - Copy `templates/credentials_template.json` to `backend/data/credentials.json`
-   - Replace the placeholder values with your actual credentials:
-     - `client_id`: Your Google OAuth2 client ID
-     - `client_secret`: Your Google OAuth2 client secret
-     - `project_id`: Your Google Cloud project ID
-     - `openweathermap_api_key`: Your OpenWeatherMap API key
+3. **Configure Credentials:**
 
    ```bash
    cp templates/credentials_template.json backend/data/credentials.json
    # Edit backend/data/credentials.json with your actual credentials
    ```
 
-### Security Notes
+### Installation
 
-- **Never commit `credentials.json` to version control**
-- The file is already in `.gitignore` to prevent accidental commits
-- Store credentials securely and restrict file permissions
-- Use environment variables for production deployments
+Detailed setup instructions are available in our comprehensive documentation:
 
-## Grocery List Improvements
+- **[Getting Started Guide](docs/getting-started.md)** - Quick setup and first steps
+- **[Configuration Guide](docs/configuration.md)** - Detailed API and environment setup
+- **[Backend Setup](backend/README.md)** - FastAPI server configuration
+- **[Frontend Setup](frontend/README.md)** - SvelteKit application setup
 
-- **Database-backed:** All grocery items are stored in `backend/data/dashboard.db` (SQLite), not a JSON file.
-- **Automatic migration:** On first run, any existing grocery items in the old JSON file are migrated to the database.
-- **Modern async API:** All grocery endpoints use async SQLAlchemy for performance and reliability.
-- **Improved UX:**
-  - Compact list view in dashboard mode
-  - Friendly empty state with "Add Item" button
-  - Full-featured add/edit/delete in expanded view
-  - Priority, category, and notes support
+## 🎯 Usage
 
-## Weather Widget Improvements
+### Dashboard Overview
 
-- **Instant dashboard updates:** When a user sets a new default location, the widget emits a `locationSet` event with the canonical location, and the parent updates the prop. The widget always shows the latest location, even after closing and reopening, without a full page reload.
-- **Error handling:** 422 errors are avoided by sending only the expected fields to the backend.
+The dashboard is organized into four main quadrants:
 
-## Extending the Dashboard
+```
+┌─────────────────┬─────────────────┐
+│   📅 Calendar   │   🌤️ Weather    │
+│                 │                 │
+│ Family Events   │ Current Weather │
+│ & Appointments  │ & Forecast      │
+└─────────────────┴─────────────────┘
+┌─────────────────┬─────────────────┐
+│   🛒 Grocery    │   📊 Monitoring │
+│                 │                 │
+│ Shopping List   │ System Health   │
+│ & Household     │ & Performance   │
+└─────────────────┴─────────────────┘
+```
 
-- Add new widgets by creating Svelte components and updating the dashboard layout
-- Add new backend APIs for additional data sources or integrations
-- Customize styles and layout with Tailwind CSS and Svelte
+### Key Interactions
 
-## License
+- **Click any quadrant** to expand for detailed view
+- **Weather widget** supports location search and geolocation
+- **Grocery list** allows adding, editing, and organizing items
+- **Calendar** shows upcoming events with details
 
-[Add your license information here]
+### Mobile & Touch Support
 
-## Support & Contributions
+The dashboard is optimized for:
 
-- For issues, questions, or contributions, please open an issue or pull request in the repository.
+- Touchscreen kiosks
+- Wall-mounted tablets
+- Desktop and mobile browsers
+- Large displays and projectors
+
+## 🔒 Security
+
+- **OAuth2 Authentication** for Google Calendar
+- **Environment Variables** for sensitive configuration
+- **Input Validation** with Pydantic schemas
+- **CORS Protection** for API endpoints
+- **Secure Credential Storage** (never committed to git)
+
+## 🚀 Deployment
+
+### Development
+
+```bash
+# Backend
+cd backend
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# Frontend
+cd frontend
+npm run dev
+```
+
+### Production
+
+See deployment guides in the component READMEs:
+
+- [Backend Deployment](backend/README.md#deployment)
+- [Frontend Deployment](frontend/README.md#deployment)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Development Guidelines
+
+- Follow [Conventional Commits](https://www.conventionalcommits.org/) for commit messages
+- Write tests for new features
+- Update documentation for API changes
+- Follow the established code style and patterns
+
+## �� Documentation
+
+### 📖 Comprehensive Guides
+
+- **[Documentation Hub](docs/README.md)** - Central documentation index
+- **[Getting Started](docs/getting-started.md)** - Quick setup guide
+- **[Configuration](docs/configuration.md)** - API and environment setup
+- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
+
+### 🎯 Feature Guides
+
+- **[Calendar Integration](docs/features/calendar.md)** - Google Calendar setup
+- **[Weather Widget](docs/features/weather.md)** - Weather data and location management
+- **[Grocery List](docs/features/grocery.md)** - Shopping list management
+- **[System Monitoring](docs/features/monitoring.md)** - Health checks and metrics
+
+### 🔧 Technical Reference
+
+- **[Backend API](backend/README.md)** - FastAPI endpoints and configuration
+- **[Frontend Guide](frontend/README.md)** - SvelteKit components and setup
+- **[API Documentation](http://localhost:8000/docs)** - Interactive API docs (when backend is running)
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Backend won't start:**
+
+- Check Python version (3.8+ required)
+- Verify credentials.json is properly configured
+- Ensure all dependencies are installed
+
+**Frontend can't connect to backend:**
+
+- Verify backend is running on port 8000
+- Check CORS configuration
+- Review network connectivity
+
+**Weather widget not working:**
+
+- Verify OpenWeatherMap API key
+- Check location format (city, state or zip code)
+- Review browser geolocation permissions
+
+### Getting Help
+
+- Check the **[Troubleshooting Guide](docs/troubleshooting.md)** for detailed solutions
+- Review the component-specific READMEs
+- Open a new issue with detailed error information
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [SvelteKit](https://kit.svelte.dev/) for the amazing frontend framework
+- [FastAPI](https://fastapi.tiangolo.com/) for the modern Python backend
+- [Tailwind CSS](https://tailwindcss.com/) for the utility-first styling
+- [Google Calendar API](https://developers.google.com/calendar) for calendar integration
+- [OpenWeatherMap](https://openweathermap.org/) for weather data
+
+---
+
+**Made with ❤️ for families everywhere**
+
+**📚 Ready to dive deeper?** Start with our [Getting Started Guide](docs/getting-started.md) or explore the [Documentation Hub](docs/README.md).
