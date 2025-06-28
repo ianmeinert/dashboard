@@ -1,0 +1,46 @@
+# Application Settings
+DEBUG=true
+LOG_LEVEL=INFO
+CONSOLE_LOGGING=true
+
+# Server Configuration
+HOST=0.0.0.0
+PORT=8000
+
+# Security
+SECRET_KEY=your-secret-key-here-change-in-production
+
+# CORS
+ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+
+# Database
+DATABASE_URL=sqlite+aiosqlite:///./data/dashboard.db
+DATABASE_POOL_SIZE=10
+DATABASE_MAX_OVERFLOW=20
+DATABASE_POOL_TIMEOUT=30
+
+# API Rate Limiting
+RATE_LIMIT_REQUESTS=100
+RATE_LIMIT_WINDOW=60
+
+# External APIs
+OPENWEATHERMAP_API_KEY=your-openweathermap-api-key-here
+OPENWEATHERMAP_BASE_URL=https://api.openweathermap.org
+OPENWEATHERMAP_TIMEOUT=10
+
+# Google Calendar
+GOOGLE_CALENDAR_ID=primary
+GOOGLE_CREDENTIALS_FILE=./data/credentials.json
+GOOGLE_TOKEN_FILE=./data/token.json
+
+# File Paths
+DATA_DIR=./data
+LOGS_DIR=./logs
+
+# Monitoring
+METRICS_ENABLED=true
+METRICS_DB_PATH=./data/metrics.db
+
+# Cache
+CACHE_ENABLED=true
+CACHE_TTL=300 

@@ -14,6 +14,10 @@ A modern, modular dashboard for home and family organization built with SvelteKi
 git clone <your-repo-url>
 cd dashboard
 
+# Set up environment variables
+cp templates/env_template.txt backend/.env
+# Edit backend/.env with your API keys and settings
+
 # Set up credentials (see Credentials section below)
 cp templates/credentials_template.json backend/data/credentials.json
 # Edit backend/data/credentials.json with your API keys
@@ -225,56 +229,6 @@ See deployment guides in the component READMEs:
 - Write tests for new features
 - Update documentation for API changes
 - Follow the established code style and patterns
-
-## �� Documentation
-
-### 📖 Comprehensive Guides
-
-- **[Documentation Hub](docs/README.md)** - Central documentation index
-- **[Getting Started](docs/getting-started.md)** - Quick setup guide
-- **[Configuration](docs/configuration.md)** - API and environment setup
-- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
-
-### 🎯 Feature Guides
-
-- **[Calendar Integration](docs/features/calendar.md)** - Google Calendar setup
-- **[Weather Widget](docs/features/weather.md)** - Weather data and location management
-- **[Grocery List](docs/features/grocery.md)** - Shopping list management
-- **[System Monitoring](docs/features/monitoring.md)** - Health checks and metrics
-
-### 🔧 Technical Reference
-
-- **[Backend API](backend/README.md)** - FastAPI endpoints and configuration
-- **[Frontend Guide](frontend/README.md)** - SvelteKit components and setup
-- **[API Documentation](http://localhost:8000/docs)** - Interactive API docs (when backend is running)
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Backend won't start:**
-
-- Check Python version (3.8+ required)
-- Verify credentials.json is properly configured
-- Ensure all dependencies are installed
-
-**Frontend can't connect to backend:**
-
-- Verify backend is running on port 8000
-- Check CORS configuration
-- Review network connectivity
-
-**Weather widget not working:**
-
-- Verify OpenWeatherMap API key
-- Check location format (city, state or zip code)
-- Review browser geolocation permissions
-
-### Getting Help
-
-- Check the **[Troubleshooting Guide](docs/troubleshooting.md)** for detailed solutions
-- Review the component-specific READMEs
-- Open a new issue with detailed error information
 
 ## 📄 License
 

@@ -11,6 +11,73 @@ A FastAPI-based backend service for managing kiosk dashboard functionality with 
 - **Security**: Secure credential management and OAuth2 flow
 - **Monitoring**: Health checks and system monitoring endpoints
 - **Robust Error Handling**: Graceful error messages for upstream and internal errors
+- **Structured Logging**: Comprehensive logging with file rotation and structured output
+
+## Logging
+
+The backend uses a comprehensive structured logging system with the following features:
+
+### Log Files
+
+- **`logs/app.log`** - Main application log (INFO and above)
+- **`logs/errors.log`** - Error-level logs only
+- **`logs/security.log`** - Security events (auth, rate limiting, etc.)
+- **`logs/performance.log`** - Performance metrics and timing data
+
+### Log Formats
+
+- **Development**: Human-readable format with timestamps and context
+- **Production**: Structured JSON format for easy parsing and analysis
+
+### Log Levels
+
+- **DEBUG**: Detailed debugging information (development only)
+- **INFO**: General application events and request logging
+- **WARNING**: Non-critical issues and security events
+- **ERROR**: Application errors and exceptions
+
+### Request Tracking
+
+All requests are assigned a unique request ID that appears in:
+
+- Log entries
+- Response headers (`X-Request-ID`)
+- Error responses for debugging
+
+### Security Logging
+
+Security events are automatically logged to `security.log`:
+
+- Rate limit violations
+- Authentication failures
+- Authorization errors
+- Suspicious activity
+
+### Performance Monitoring
+
+Performance metrics are logged to `performance.log`:
+
+- Request/response timing
+- Database operation duration
+- External API call performance
+- Resource usage metrics
+
+### Configuration
+
+```env
+# Logging Configuration
+LOG_LEVEL=INFO                    # Log level (DEBUG, INFO, WARNING, ERROR)
+CONSOLE_LOGGING=true              # Enable console output (development)
+DEBUG=true                        # Enable debug mode and human-readable logs
+```
+
+### Log Rotation
+
+Log files are automatically rotated:
+
+- **Main logs**: 10MB max size, 5 backup files
+- **Security/Performance**: 5MB max size, 3 backup files
+- **Encoding**: UTF-8 for proper character support
 
 ## API Endpoints
 
@@ -129,17 +196,29 @@ A FastAPI-based backend service for managing kiosk dashboard functionality with 
    uv pip install -r requirements.txt
    ```
 
-4. **Set up credentials:**
+4. **Set up environment variables:**
+
+   ```bash
+   # Copy the environment template
+   cp ../templates/env_template.txt .env
+   
+   # Edit .env and add your actual values:
+   # - Generate a secure SECRET_KEY: python -c "import secrets; print(secrets.token_urlsafe(32))"
+   # - Add your OpenWeatherMap API key
+   # - Adjust other settings as needed
+   ```
+
+5. **Set up credentials:**
    - See the main [README.md](../README.md#credentials-setup) for detailed credentials setup instructions
    - Ensure `backend/data/credentials.json` is properly configured with Google Calendar and OpenWeatherMap credentials
 
-5. **Run the application:**
+6. **Run the application:**
 
    ```bash
    uvicorn main:app --reload --host 0.0.0.0 --port 8000
    ```
 
-6. **Complete OAuth2 setup:**
+7. **Complete OAuth2 setup:**
    - Visit `http://localhost:8000/docs` for API documentation
    - On first run, follow the OAuth2 authorization flow
    - Token will be automatically saved as `token.json`
@@ -148,31 +227,63 @@ A FastAPI-based backend service for managing kiosk dashboard functionality with 
 
 ### Environment Variables
 
-Create a `.env` file in the `backend/` directory:
+The application uses a `.env` file for configuration. Copy `../templates/env_template.txt` to `backend/.env` and customize the values:
 
 ```env
-# Application
-DEBUG=false
+# Application Settings
+DEBUG=true
 LOG_LEVEL=INFO
+
+# Server Configuration
 HOST=0.0.0.0
 PORT=8000
 
+# Security
+SECRET_KEY=your-secret-key-here-change-in-production
+
+# CORS
+ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+
+# Database
+DATABASE_URL=sqlite+aiosqlite:///./data/dashboard.db
+DATABASE_POOL_SIZE=10
+DATABASE_MAX_OVERFLOW=20
+DATABASE_POOL_TIMEOUT=30
+
+# API Rate Limiting
+RATE_LIMIT_REQUESTS=100
+RATE_LIMIT_WINDOW=60
+
+# External APIs
+OPENWEATHERMAP_API_KEY=your-openweathermap-api-key-here
+OPENWEATHERMAP_BASE_URL=https://api.openweathermap.org
+OPENWEATHERMAP_TIMEOUT=10
+
 # Google Calendar
 GOOGLE_CALENDAR_ID=primary
-EVENT_LOOKAHEAD_DAYS=7
-MAX_EVENTS=10
+GOOGLE_CREDENTIALS_FILE=./data/credentials.json
+GOOGLE_TOKEN_FILE=./data/token.json
 
-# Security
-SECRET_KEY=your-secret-key-here
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+# File Paths
+DATA_DIR=./data
+LOGS_DIR=./logs
+
+# Monitoring
+METRICS_ENABLED=true
+METRICS_DB_PATH=./data/metrics.db
+
+# Cache
+CACHE_ENABLED=true
+CACHE_TTL=300
 ```
 
 ### Security Configuration
 
 - **Never commit sensitive files to version control**
-- Store `credentials.json` and `token.json` securely
+- Store `credentials.json`, `token.json`, and `.env` securely
 - Use environment variables for configuration
 - Restrict file permissions on credential files
+- Generate a secure SECRET_KEY for production
 
 ## API Documentation
 
