@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from ..utils.monitoring import LOG_FILE, health_checker, metrics
+from ..services.monitoring_service import LOG_FILE, health_checker, metrics
 
 monitoring_router = APIRouter()
 

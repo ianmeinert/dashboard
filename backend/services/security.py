@@ -13,7 +13,7 @@ from fastapi import HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 
-from .config import settings
+from ..core.config import settings
 
 
 class RateLimiter:

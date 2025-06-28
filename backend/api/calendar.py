@@ -12,10 +12,10 @@ from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from ..schemas.calendar import CalendarEvent
-from ..utils.google_calendar import get_upcoming_events
-from ..utils.monitoring import log_error, monitor_performance
-from ..utils.sync_token_db import get_all_calendar_colors
+from ..models.schemas.calendar import CalendarEvent
+from ..services.calendar_service import get_upcoming_events
+from ..services.monitoring_service import log_error, monitor_performance
+from ..services.sync_token_db import get_all_calendar_colors
 
 calendar_router = APIRouter()
 

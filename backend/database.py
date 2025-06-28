@@ -14,8 +14,8 @@ from sqlalchemy.ext.asyncio import (AsyncEngine, AsyncSession,
                                     async_sessionmaker, create_async_engine)
 from sqlalchemy.pool import NullPool, QueuePool
 
-from .config import settings
-from .models import Base
+from .core.config import settings
+from .models.base import Base
 
 # Database engine with connection pooling
 engine: AsyncEngine = create_async_engine(

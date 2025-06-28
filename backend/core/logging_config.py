@@ -12,6 +12,7 @@ import sys
 from datetime import datetime
 from typing import Any, Dict, Optional
 
+from ..services.security_utils import sanitize_for_logging
 from .config import settings
 
 
@@ -31,19 +32,19 @@ class StructuredFormatter(logging.Formatter):
             "line": record.lineno,
         }
         
-        # Add exception info if present
+        # Add exception info if present (sanitized)
         if record.exc_info:
             log_entry["exception"] = {
                 "type": record.exc_info[0].__name__ if record.exc_info[0] else None,
-                "message": str(record.exc_info[1]) if record.exc_info[1] else None,
-                "traceback": self.formatException(record.exc_info)
+                "message": "[REDACTED]",  # Never log actual exception messages
+                "traceback": "[REDACTED]"  # Never log stack traces
             }
         
-        # Add extra fields if present
+        # Add extra fields if present (sanitized)
         if hasattr(record, "extra_fields"):
-            log_entry.update(record.extra_fields)
+            log_entry.update(sanitize_for_logging(record.extra_fields))
         
-        # Add request context if available
+        # Add request context if available (sanitized)
         if hasattr(record, "request_id"):
             log_entry["request_id"] = record.request_id
         
@@ -83,17 +84,18 @@ class HumanReadableFormatter(logging.Formatter):
         if record.module != "__main__":
             formatted += f" | {record.module}.{record.funcName}:{record.lineno}"
         
-        # Add extra fields if present
+        # Add extra fields if present (sanitized)
         if hasattr(record, "extra_fields"):
-            formatted += f" | {record.extra_fields}"
+            safe_fields = sanitize_for_logging(record.extra_fields)
+            formatted += f" | {safe_fields}"
         
         # Add request context if available
         if hasattr(record, "request_id"):
             formatted += f" | req:{record.request_id[:8]}"
         
-        # Add exception info if present
+        # Add exception info if present (sanitized)
         if record.exc_info:
-            formatted += f"\n{self.formatException(record.exc_info)}"
+            formatted += f"\n[EXCEPTION_REDACTED]"
         
         return formatted
 

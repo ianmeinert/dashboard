@@ -1,8 +1,7 @@
 """
-Exception Handling
+Exception Handling and Error Responses
 
-Provides custom exception classes and comprehensive error handling utilities
-for the Family Dashboard API with secure error responses and proper logging.
+Provides custom exceptions and standardized error handling for the Family Dashboard API.
 """
 
 import logging
@@ -12,6 +11,9 @@ from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
+
+from ..services.security_utils import (sanitize_error_response,
+                                       sanitize_for_logging)
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +161,8 @@ def create_error_response(
             response["error_code"] = error.error_code
             
         if error.details:
-            response["details"] = error.details
+            # Sanitize details to remove any sensitive information
+            response["details"] = sanitize_for_logging(error.details)
     
     elif isinstance(error, HTTPException):
         response.update({
@@ -169,19 +172,23 @@ def create_error_response(
         })
     
     elif isinstance(error, ValidationError):
+        # Sanitize validation errors to remove any sensitive field values
+        sanitized_errors = []
+        for err in error.errors():
+            sanitized_error = {
+                "field": " -> ".join(str(loc) for loc in err["loc"]),
+                "message": err["msg"],
+                "type": err["type"]
+            }
+            # Don't include the actual value in validation errors
+            sanitized_errors.append(sanitized_error)
+        
         response.update({
             "error": "Validation Error",
             "message": "Invalid input data",
             "status_code": status.HTTP_422_UNPROCESSABLE_ENTITY,
             "error_code": "VALIDATION_ERROR",
-            "details": [
-                {
-                    "field": " -> ".join(str(loc) for loc in err["loc"]),
-                    "message": err["msg"],
-                    "type": err["type"]
-                }
-                for err in error.errors()
-            ]
+            "details": sanitized_errors
         })
     
     elif isinstance(error, SQLAlchemyError):
@@ -192,14 +199,15 @@ def create_error_response(
             "error_code": "DATABASE_ERROR"
         })
     
-    # Include additional details in debug mode
+    # Include additional details in debug mode (sanitized)
     if include_details and settings.debug:
         response["debug"] = {
             "exception_type": type(error).__name__,
-            "exception_message": str(error)
+            "exception_message": "[REDACTED]"  # Never expose actual error messages
         }
     
-    return response
+    # Sanitize the entire response to ensure no secrets are exposed
+    return sanitize_error_response(response)
 
 
 def log_exception(
@@ -217,42 +225,45 @@ def log_exception(
     """
     from .logging_config import log_security_event
 
-    # Create context information
+    # Create context information (sanitized)
     context = {
         "method": request.method,
         "url": str(request.url),
         "client_ip": request.client.host if request.client else "unknown",
         "user_agent": request.headers.get("user-agent", "unknown"),
         "exception_type": type(error).__name__,
-        "exception_message": str(error)
+        "exception_message": "[REDACTED]"  # Never log actual error messages
     }
+    
+    # Sanitize context to ensure no secrets are logged
+    safe_context = sanitize_for_logging(context)
     
     # Log with appropriate level and context
     if isinstance(error, (ValidationException, NotFoundException)):
-        logger.warning(f"Client error: {context}")
+        logger.warning(f"Client error: {safe_context}")
     elif isinstance(error, (AuthenticationException, AuthorizationException)):
         log_security_event(
             event_type="auth_error",
             message=f"{type(error).__name__}: {error.message}",
-            client_ip=context["client_ip"],
-            user_agent=context["user_agent"],
+            client_ip=safe_context["client_ip"],
+            user_agent=safe_context["user_agent"],
             request_id=getattr(request.state, "request_id", None),
-            extra_fields=context
+            extra_fields=safe_context
         )
     elif isinstance(error, RateLimitException):
         log_security_event(
             event_type="rate_limit_exceeded",
             message="Rate limit exceeded",
-            client_ip=context["client_ip"],
-            user_agent=context["user_agent"],
+            client_ip=safe_context["client_ip"],
+            user_agent=safe_context["user_agent"],
             request_id=getattr(request.state, "request_id", None),
-            extra_fields=context
+            extra_fields=safe_context
         )
     else:
         if include_stack_trace:
-            logger.error(f"Server error: {context}", exc_info=True)
+            logger.error(f"Server error: {safe_context}", exc_info=True)
         else:
-            logger.error(f"Server error: {context}")
+            logger.error(f"Server error: {safe_context}")
 
 
 async def handle_dashboard_exception(request: Request, exc: DashboardException) -> JSONResponse:

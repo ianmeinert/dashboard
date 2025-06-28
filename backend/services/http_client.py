@@ -6,6 +6,7 @@ and proper resource management to prevent memory leaks.
 """
 
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Dict, Optional
 
@@ -13,7 +14,10 @@ import aiohttp
 from aiohttp import ClientSession, ClientTimeout
 from aiohttp.connector import TCPConnector
 
-from .config import settings
+from ..core.config import settings
+from .security_utils import sanitize_for_logging
+
+logger = logging.getLogger(__name__)
 
 
 class HTTPClientManager:
@@ -146,7 +150,25 @@ class WeatherAPIClient:
             "units": "imperial"
         }
         
+        # Log request with masked API key
+        safe_params = params.copy()
+        safe_params["appid"] = "[REDACTED]"
+        logger.debug("Making weather API request", extra={
+            "extra_fields": {
+                "url": url,
+                "params": safe_params,
+                "lat": lat,
+                "lon": lon
+            }
+        })
+        
         data = await get_json(url, params=params)
+        logger.debug("Weather API request successful", extra={
+            "extra_fields": {
+                "url": url,
+                "response_size": len(str(data))
+            }
+        })
         return {"weather": data}
     
     async def get_forecast(self, lat: float, lon: float) -> Dict:
@@ -159,7 +181,25 @@ class WeatherAPIClient:
             "units": "imperial"
         }
         
+        # Log request with masked API key
+        safe_params = params.copy()
+        safe_params["appid"] = "[REDACTED]"
+        logger.debug("Making forecast API request", extra={
+            "extra_fields": {
+                "url": url,
+                "params": safe_params,
+                "lat": lat,
+                "lon": lon
+            }
+        })
+        
         data = await get_json(url, params=params)
+        logger.debug("Forecast API request successful", extra={
+            "extra_fields": {
+                "url": url,
+                "response_size": len(str(data))
+            }
+        })
         return {"forecast": data}
     
     async def geocode_city(self, city: str, state: str, country: str = "US") -> tuple[float, float]:
@@ -171,10 +211,29 @@ class WeatherAPIClient:
             "appid": self.api_key
         }
         
+        # Log request with masked API key
+        safe_params = params.copy()
+        safe_params["appid"] = "[REDACTED]"
+        logger.debug("Making geocoding API request", extra={
+            "extra_fields": {
+                "url": url,
+                "params": safe_params,
+                "city": city,
+                "state": state,
+                "country": country
+            }
+        })
+        
         data = await get_json(url, params=params)
         if not data:
             raise ValueError("Location not found")
         
+        logger.debug("Geocoding API request successful", extra={
+            "extra_fields": {
+                "url": url,
+                "result_count": len(data)
+            }
+        })
         return data[0]["lat"], data[0]["lon"]
     
     async def geocode_zip(self, zip_code: str, country: str = "US") -> tuple[float, float]:
@@ -185,7 +244,25 @@ class WeatherAPIClient:
             "appid": self.api_key
         }
         
+        # Log request with masked API key
+        safe_params = params.copy()
+        safe_params["appid"] = "[REDACTED]"
+        logger.debug("Making ZIP geocoding API request", extra={
+            "extra_fields": {
+                "url": url,
+                "params": safe_params,
+                "zip_code": zip_code,
+                "country": country
+            }
+        })
+        
         data = await get_json(url, params=params)
+        logger.debug("ZIP geocoding API request successful", extra={
+            "extra_fields": {
+                "url": url,
+                "result": {"lat": data["lat"], "lon": data["lon"]}
+            }
+        })
         return data["lat"], data["lon"]
 
 

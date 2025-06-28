@@ -12,14 +12,15 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+from ..core.exceptions import (DatabaseException, ExternalAPIException,
+                               ValidationException)
+from ..core.metrics import record_external_api_request, record_weather_request
 from ..database import get_db
-from ..exceptions import (DatabaseException, ExternalAPIException,
-                          ValidationException)
-from ..http_client import weather_client
-from ..metrics import record_external_api_request, record_weather_request
-from ..models import WeatherSettings
-from ..schemas.weather import WeatherSettingsCreate, WeatherSettingsResponse
-from ..security import validate_coordinates, validate_location_input
+from ..models.schemas.weather import (WeatherSettingsCreate,
+                                      WeatherSettingsResponse)
+from ..models.weather import WeatherSettings
+from ..services.http_client import weather_client
+from ..services.security import validate_coordinates, validate_location_input
 
 logger = logging.getLogger(__name__)
 weather_router = APIRouter()

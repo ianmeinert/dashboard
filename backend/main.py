@@ -31,17 +31,18 @@ from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
 from .api import calendar, grocery, monitoring, weather
-from .config import settings
+from .core.config import settings
+from .core.exceptions import (DashboardException, handle_dashboard_exception,
+                              handle_database_error, handle_generic_exception,
+                              handle_validation_error)
+from .core.logging_config import log_request, log_security_event, setup_logging
+from .core.metrics import (get_metrics, record_health_check,
+                           record_rate_limit_hit, setup_metrics_instrumentator)
 from .database import close_db, init_db
-from .exceptions import (DashboardException, handle_dashboard_exception,
-                         handle_database_error, handle_generic_exception,
-                         handle_validation_error)
-from .http_client import http_client, weather_client
-from .logging_config import log_request, log_security_event, setup_logging
-from .metrics import (get_metrics, record_health_check, record_rate_limit_hit,
-                      setup_metrics_instrumentator)
-from .security import add_security_headers, get_client_id, rate_limiter
-from .utils.google_calendar import get_upcoming_events
+from .services.calendar_service import get_upcoming_events
+from .services.http_client import http_client, weather_client
+from .services.security import (add_security_headers, get_client_id,
+                                rate_limiter)
 
 # Setup structured logging
 setup_logging()
