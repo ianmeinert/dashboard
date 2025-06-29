@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onDestroy, onMount } from 'svelte';
+import { serviceApi } from '../../utils/api.js';
 import type { CalendarEvent } from './Calendar.svelte';
 import Calendar from './Calendar.svelte';
 
@@ -95,8 +96,8 @@ const fallbackColorPalette = [
 
 async function fetchCalendarColors() {
   try {
-    const res = await fetch('http://localhost:8000/api/calendar/colors');
-    const colors = await res.json();
+    const response = await serviceApi.calendar.get('/colors');
+    const colors = response.data;
     for (const [calendarId, colorInfo] of Object.entries(colors)) {
       calendarColors[calendarId] = (colorInfo as { color_class: string }).color_class;
     }
@@ -123,8 +124,8 @@ async function fetchMonthEvents(year: number, month: number) {
   const { start, end } = getVisibleGridRange(year, month);
   loading = true;
   try {
-    const res = await fetch(`http://localhost:8000/api/calendar/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
-    const data = await res.json();
+    const response = await serviceApi.calendar.get(`/events?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`);
+    const data = response.data;
     monthEvents[key] = data;
     saveToCache();
     if (year === currentYear && month === currentMonth) {

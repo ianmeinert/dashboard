@@ -6,8 +6,8 @@ FROM node:22-alpine
 WORKDIR /app
 
 
-# Clone the repository
-RUN git clone https://github.com/ianmeinert/dashboard.git .
+# Copy the frontend files from the build context
+COPY frontend/ /app/frontend/
 
 
 # Navigate to the frontend directory
@@ -15,7 +15,7 @@ WORKDIR /app/frontend
 
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm install
 
 
 # Build the application
@@ -23,8 +23,8 @@ RUN npm run build
 
 
 # Expose the port that the app will run on
-EXPOSE 4173
+EXPOSE 5173
 
 
 # Command to serve the app using Node.js
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "4173"]
+CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "5173"]

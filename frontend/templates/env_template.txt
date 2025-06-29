@@ -1,0 +1,17 @@
+# Frontend Environment Configuration
+# Copy this content to .env.local and adjust values as needed
+
+# API Configuration
+# Leave empty to use Vite proxy (recommended for development)
+# Set to full URL for production (e.g., https://api.yourdomain.com)
+PUBLIC_API_BASE_URL=
+
+# Feature Flags
+# These can be overridden in production builds
+PUBLIC_ENABLE_DEBUG_LOGGING=true
+PUBLIC_ENABLE_METRICS=true
+PUBLIC_ENABLE_CACHING=true
+
+# Development Settings
+# Only used in development mode
+PUBLIC_DEV_MODE=true 

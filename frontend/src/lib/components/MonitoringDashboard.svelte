@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
+  import { UI_CONFIG } from '../config.js';
+  import { serviceApi } from '../utils/api.js';
 
   let systemStatus: any = null;
   let metrics: any = null;
@@ -9,13 +11,12 @@
   let refreshInterval: number;
 
   // Auto-refresh every 30 seconds
-  const REFRESH_INTERVAL = 30000;
+  const REFRESH_INTERVAL = UI_CONFIG.refreshIntervals.monitoring;
 
   async function fetchSystemStatus() {
     try {
-      const response = await fetch('http://localhost:8000/api/monitoring/status');
-      if (!response.ok) throw new Error('Failed to fetch system status');
-      systemStatus = await response.json();
+      const response = await serviceApi.monitoring.get('/status');
+      systemStatus = response.data;
     } catch (e) {
       error = `Failed to fetch system status: ${e}`;
     }
@@ -23,9 +24,8 @@
 
   async function fetchMetrics() {
     try {
-      const response = await fetch('http://localhost:8000/api/monitoring/metrics?hours=1');
-      if (!response.ok) throw new Error('Failed to fetch metrics');
-      metrics = await response.json();
+      const response = await serviceApi.monitoring.get('/metrics?hours=1');
+      metrics = response.data;
     } catch (e) {
       console.error('Failed to fetch metrics:', e);
     }
@@ -33,9 +33,8 @@
 
   async function fetchRecentLogs() {
     try {
-      const response = await fetch('http://localhost:8000/api/monitoring/logs?lines=20');
-      if (!response.ok) throw new Error('Failed to fetch logs');
-      recentLogs = await response.json();
+      const response = await serviceApi.monitoring.get('/logs?lines=20');
+      recentLogs = response.data;
     } catch (e) {
       console.error('Failed to fetch logs:', e);
     }
@@ -67,9 +66,9 @@
     }
   }
 
-  function formatResponseTime(time: number): string {
-    if (time < 1) return `${(time * 1000).toFixed(0)}ms`;
-    return `${time.toFixed(2)}s`;
+  function formatResponseTime(ms: number): string {
+    if (ms < 1000) return `${Math.round(ms)}ms`;
+    return `${(ms / 1000).toFixed(2)}s`;
   }
 
   function formatTimestamp(timestamp: string): string {
@@ -82,7 +81,9 @@
   });
 
   onDestroy(() => {
-    if (refreshInterval) clearInterval(refreshInterval);
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+    }
   });
 </script>
 
@@ -162,14 +163,14 @@
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
         <div class="space-y-2">
           <a
-            href="http://localhost:8000/docs"
+            href="/docs"
             target="_blank"
             class="block w-full px-4 py-2 bg-blue-600 text-white text-center rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             API Documentation
           </a>
           <a
-            href="http://localhost:8000/api/monitoring/health"
+            href="/api/monitoring/health"
             target="_blank"
             class="block w-full px-4 py-2 bg-green-600 text-white text-center rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
           >

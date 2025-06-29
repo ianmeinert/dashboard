@@ -5,6 +5,7 @@
  */
 
 import { derived, writable } from 'svelte/store';
+import { serviceApi } from '../utils/api.js';
 
 // Types
 export interface GroceryItem {
@@ -54,47 +55,6 @@ const { subscribe, set, update } = writable<GroceryStore>({
   pending_count: 0
 });
 
-// API base URL
-const API_BASE = 'http://localhost:8000/api/grocery';
-
-// Helper function for API calls
-const apiCall = async (endpoint: string, options: RequestInit = {}) => {
-  try {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-      },
-      ...options
-    });
-
-    if (!response.ok) {
-      let errorData;
-      try {
-        errorData = await response.json();
-      } catch {
-        errorData = {};
-      }
-      // Try to extract FastAPI validation error details
-      if (errorData.detail) {
-        if (Array.isArray(errorData.detail)) {
-          // Validation error
-          throw new Error(
-            errorData.detail.map((d: any) => d.msg).join('; ')
-          );
-        }
-        throw new Error(errorData.detail);
-      }
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('API call failed:', error);
-    throw error;
-  }
-};
-
 // Store methods
 export const groceryStore = {
   subscribe,
@@ -104,7 +64,8 @@ export const groceryStore = {
     update(state => ({ ...state, loading: true, error: null }));
     
     try {
-      const data: GroceryListResponse = await apiCall('/');
+      const response = await serviceApi.grocery.get();
+      const data: GroceryListResponse = response.data;
       set({
         items: data.items,
         loading: false,
@@ -127,10 +88,7 @@ export const groceryStore = {
     update(state => ({ ...state, loading: true, error: null }));
     
     try {
-      await apiCall('/', {
-        method: 'POST',
-        body: JSON.stringify(item)
-      });
+      await serviceApi.grocery.post(item);
       
       // Reload the list to get the updated data
       await groceryStore.loadItems();
@@ -146,7 +104,7 @@ export const groceryStore = {
   // Toggle item completion status
   toggleItem: async (itemId: number) => {
     try {
-      await apiCall(`/${itemId}/toggle`, { method: 'PATCH' });
+      await serviceApi.grocery.patch(itemId, {});
       await groceryStore.loadItems();
     } catch (error) {
       update(state => ({
@@ -159,10 +117,7 @@ export const groceryStore = {
   // Update grocery item
   updateItem: async (itemId: number, updates: Partial<GroceryItem>) => {
     try {
-      await apiCall(`/${itemId}`, {
-        method: 'PUT',
-        body: JSON.stringify(updates)
-      });
+      await serviceApi.grocery.put(itemId, updates);
       await groceryStore.loadItems();
     } catch (error) {
       update(state => ({
@@ -175,7 +130,7 @@ export const groceryStore = {
   // Delete grocery item
   deleteItem: async (itemId: number) => {
     try {
-      await apiCall(`/${itemId}`, { method: 'DELETE' });
+      await serviceApi.grocery.delete(itemId);
       await groceryStore.loadItems();
     } catch (error) {
       update(state => ({
@@ -188,7 +143,7 @@ export const groceryStore = {
   // Clear completed items
   clearCompleted: async () => {
     try {
-      await apiCall('/', { method: 'DELETE' });
+      await serviceApi.grocery.delete('/completed');
       await groceryStore.loadItems();
     } catch (error) {
       update(state => ({
@@ -203,6 +158,16 @@ export const groceryStore = {
     update(state => ({ ...state, error: null }));
   }
 };
+
+// Derived stores for computed values
+export const groceryItems = derived(groceryStore, ($store) => $store.items);
+export const groceryLoading = derived(groceryStore, ($store) => $store.loading);
+export const groceryError = derived(groceryStore, ($store) => $store.error);
+export const groceryStats = derived(groceryStore, ($store) => ({
+  total: $store.total_count,
+  completed: $store.completed_count,
+  pending: $store.pending_count
+}));
 
 // Derived stores for filtered items
 export const pendingItems = derived(groceryStore, ($store) => 

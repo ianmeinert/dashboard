@@ -11,6 +11,7 @@ A modern, responsive SvelteKit application for displaying kiosk dashboard inform
 - **Card-Style Widgets**: Visually distinct dashboard quadrants with card boundaries
 - **TypeScript Support**: Full type safety and IntelliSense
 - **Performance Optimized**: Fast loading and smooth interactions
+- **Centralized Configuration**: Environment-based configuration management with type safety
 
 ## Weather Widget Usage
 
@@ -58,17 +59,23 @@ A modern, responsive SvelteKit application for displaying kiosk dashboard inform
    ```
 
 3. **Set up environment variables:**
-   Create a `.env` file in the `frontend/` directory:
+   Copy the template and configure your environment:
+
+   ```bash
+   cp templates/env_template.txt .env.local
+   ```
+
+   For development (recommended):
 
    ```env
-   # API Configuration
-   VITE_API_BASE_URL=http://localhost:8000
-   VITE_API_TIMEOUT=10000
-   # Application Configuration
-   VITE_APP_TITLE=Kiosk Dashboard
-   VITE_REFRESH_INTERVAL=30000
-   # Development
-   VITE_DEV_MODE=true
+   # Leave empty to use Vite proxy
+   PUBLIC_API_BASE_URL=
+   ```
+
+   For production:
+
+   ```env
+   PUBLIC_API_BASE_URL=https://api.yourdomain.com
    ```
 
 4. **Start the development server:**
@@ -94,6 +101,8 @@ frontend/
 │   │   ├── components/       # Reusable Svelte components
 │   │   ├── stores/           # Svelte stores for state management
 │   │   ├── utils/            # Utility functions
+│   │   │   └── api.ts        # Centralized API utilities
+│   │   ├── config.ts         # Configuration management
 │   │   └── types/            # TypeScript type definitions
 │   ├── routes/               # SvelteKit routes
 │   │   ├── +layout.svelte    # Root layout
@@ -103,12 +112,45 @@ frontend/
 ├── static/                   # Static assets
 │   ├── favicon.png
 │   └── images/
+├── templates/                # Template files
+│   └── env_template.txt      # Environment configuration template
+├── docs/                     # Documentation
+│   └── configuration.md      # Configuration management guide
 ├── package.json              # Dependencies and scripts
 ├── svelte.config.js          # SvelteKit configuration
 ├── tailwind.config.js        # Tailwind CSS configuration
 ├── tsconfig.json             # TypeScript configuration
 ├── vite.config.ts            # Vite configuration
 └── README.md                 # This file
+```
+
+## Configuration Management
+
+The frontend uses a centralized configuration system for better maintainability and environment flexibility. See [Configuration Guide](docs/configuration.md) for detailed information.
+
+### Key Benefits
+
+- **Environment Flexibility**: Easy switching between development, staging, and production
+- **Type Safety**: Full TypeScript support for all configuration options
+- **Consistent Error Handling**: Centralized error handling and retry logic
+- **Service APIs**: Type-safe, service-specific API helpers
+
+### Quick Configuration Examples
+
+```typescript
+// Using service APIs
+import { serviceApi } from '$lib/utils/api.js';
+
+const items = await serviceApi.grocery.get();
+const events = await serviceApi.calendar.get('/events?start=...&end=...');
+
+// Using configuration
+import { UI_CONFIG, FEATURES } from '$lib/config.js';
+
+const refreshInterval = UI_CONFIG.refreshIntervals.monitoring;
+if (FEATURES.enableCaching) {
+  // Enable caching logic
+}
 ```
 
 ## Dashboard Layout
@@ -187,22 +229,25 @@ The frontend communicates with the FastAPI backend for:
 
 ### Environment Configuration
 
-Configure API endpoints in your `.env` file:
+The application uses SvelteKit's environment variable system. Configure API endpoints in your `.env.local` file:
 
 ```env
-# Development
-VITE_API_BASE_URL=http://localhost:8000
+# Development (uses Vite proxy)
+PUBLIC_API_BASE_URL=
 
 # Production
-VITE_API_BASE_URL=https://your-api-domain.com
+PUBLIC_API_BASE_URL=https://your-api-domain.com
 ```
 
 ### Error Handling
 
-- Network errors are handled gracefully
+The centralized API utilities provide consistent error handling:
+
+- Automatic retry logic with exponential backoff
+- FastAPI validation error parsing
+- Network error detection
+- Timeout handling
 - User-friendly error messages
-- Automatic retry mechanisms
-- Fallback content when API is unavailable
 
 ## Styling
 

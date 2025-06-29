@@ -1,24 +1,26 @@
 # Use the official Python 3.13.5 alpine image
 FROM python:3.13.5-alpine
 
-# Install git and other dependencies
-RUN apt-get update && apt-get install -y git && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+# Install git and other dependencies using Alpine's package manager
+RUN apk add --no-cache git
 
 # Set the working directory
 WORKDIR /app
 
-# Clone the repository
-RUN git clone https://github.com/ianmeinert/dashboard.git .
-
-# Navigate to the backend directory
-WORKDIR /app/backend
+# Copy requirements.txt first for better caching
+COPY backend/requirements.txt /app/requirements.txt
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy the backend files from the build context
+COPY backend/ /app/backend/
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/data
+
 # Expose the port that Uvicorn will run on
-EXPOSE 8000
+EXPOSE 8081
 
 # Command to run the FastAPI application using Uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8081"]
