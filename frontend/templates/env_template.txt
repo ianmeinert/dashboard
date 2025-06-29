@@ -10,6 +10,10 @@ PUBLIC_API_BASE_URL=
 # Only needed for development environments
 PUBLIC_API_FALLBACK_URL=http://localhost:8000
 
+# Vite Development Proxy Target
+# Used by Vite dev server to proxy API requests
+VITE_API_PROXY_TARGET=http://localhost:8000
+
 # Feature Flags
 # These can be overridden in production builds
 PUBLIC_ENABLE_DEBUG_LOGGING=true

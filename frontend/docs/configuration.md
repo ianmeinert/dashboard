@@ -56,6 +56,8 @@ Centralized HTTP client with:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PUBLIC_API_BASE_URL` | API base URL (empty = use proxy) | `''` |
+| `PUBLIC_API_FALLBACK_URL` | Fallback URL when base URL is empty | `http://localhost:8000` |
+| `VITE_API_PROXY_TARGET` | Vite dev server proxy target | `http://localhost:8000` |
 | `PUBLIC_ENABLE_DEBUG_LOGGING` | Enable debug logging | `true` (dev) |
 | `PUBLIC_ENABLE_METRICS` | Enable metrics collection | `true` |
 | `PUBLIC_ENABLE_CACHING` | Enable client-side caching | `true` |
