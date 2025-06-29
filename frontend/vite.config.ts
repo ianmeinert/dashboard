@@ -6,13 +6,17 @@ export default defineConfig(({ mode }) => {
 	// Load env file based on `mode` in the current working directory.
 	const env = loadEnv(mode, process.cwd(), '');
 	
+	// Determine the API target based on environment
+	// In Docker, use the service name; in development, use localhost
+	const apiTarget = env.VITE_API_PROXY_TARGET || 'http://localhost:8000';
+	
 	return {
 		plugins: [tailwindcss(), sveltekit()],
 		server: {
+			host: '0.0.0.0', // Allow external connections
 			proxy: {
 				'/api': {
-					// Use environment variable or fallback to localhost for development
-					target: env.VITE_API_PROXY_TARGET || 'http://localhost:8000',
+					target: apiTarget,
 					changeOrigin: true,
 					secure: false,
 					// Add logging for debugging
