@@ -7,6 +7,7 @@ export default defineConfig({
 	server: {
 		proxy: {
 			'/api': {
+				// Development proxy target - can be overridden via environment variable
 				target: 'http://localhost:8000',
 				changeOrigin: true,
 				secure: false,

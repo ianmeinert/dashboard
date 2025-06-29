@@ -6,6 +6,10 @@
 # Set to full URL for production (e.g., https://api.yourdomain.com)
 PUBLIC_API_BASE_URL=
 
+# API Fallback URL (used when PUBLIC_API_BASE_URL is empty)
+# Only needed for development environments
+PUBLIC_API_FALLBACK_URL=http://localhost:8000
+
 # Feature Flags
 # These can be overridden in production builds
 PUBLIC_ENABLE_DEBUG_LOGGING=true

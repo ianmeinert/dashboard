@@ -92,7 +92,7 @@ export function getEnvironmentConfig() {
   return {
     isDevelopment,
     isProduction,
-    apiBaseUrl: API_CONFIG.baseUrl || 'http://localhost:8000',
+    apiBaseUrl: API_CONFIG.baseUrl || env.PUBLIC_API_FALLBACK_URL || 'http://localhost:8000',
     features: FEATURES,
   };
 }
