@@ -5,21 +5,36 @@ set -e
 
 echo "Setting up kiosk system..."
 
+# Get the current directory (should be the project root)
+PROJECT_DIR=$(pwd)
+
+# Verify we're in a git repository
+if [ ! -d ".git" ]; then
+    echo "Error: This script must be run from the root of the dashboard git repository"
+    exit 1
+fi
+
+echo "Current project directory: $PROJECT_DIR"
+
 # Create directories
 sudo mkdir -p /opt/dashboard
 sudo mkdir -p /var/log/dashboard
 sudo chown $USER:$USER /opt/dashboard /var/log/dashboard
 
-# Clone the repository
-cd /opt
-if [ -d "dashboard" ]; then
-    echo "Dashboard directory exists, pulling latest changes..."
-    cd dashboard
-    git pull
+# Copy/move the current project to /opt/dashboard if it's not already there
+if [ "$PROJECT_DIR" != "/opt/dashboard" ]; then
+    echo "Copying project to /opt/dashboard..."
+    sudo cp -r . /opt/dashboard/
+    sudo chown -R $USER:$USER /opt/dashboard
+    
+    # Update the working directory
+    cd /opt/dashboard
+    
+    # Ensure git remote is set correctly
+    git remote set-url origin https://github.com/ianmeinert/dashboard.git
 else
-    echo "Cloning dashboard repository..."
-    git clone https://github.com/ianmeinert/dashboard.git
-    cd dashboard
+    echo "Already in /opt/dashboard, pulling latest changes..."
+    git pull
 fi
 
 # Install Python dependencies (assuming requirements.txt exists)
