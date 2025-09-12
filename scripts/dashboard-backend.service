@@ -1,0 +1,19 @@
+# scripts/dashboard-backend.service - Systemd service for FastAPI backend
+[Unit]
+Description=Dashboard Backend Service
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=yourusername
+Group=yourusername
+WorkingDirectory=/opt/dashboard
+ExecStart=/opt/dashboard/scripts/start-backend.sh
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

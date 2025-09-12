@@ -1,0 +1,12 @@
+# scripts/dashboard-update.timer - Timer to trigger periodic updates
+[Unit]
+Description=Dashboard Update Timer
+Requires=dashboard-update.service
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,20 @@
+# scripts/dashboard-frontend.service - Systemd service for Node.js frontend
+[Unit]
+Description=Dashboard Frontend Service
+After=network.target dashboard-backend.service
+Wants=network-online.target
+Requires=dashboard-backend.service
+
+[Service]
+Type=exec
+User=yourusername
+Group=yourusername
+WorkingDirectory=/opt/dashboard/frontend
+ExecStart=/opt/dashboard/scripts/start-frontend.sh
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
