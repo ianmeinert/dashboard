@@ -47,9 +47,10 @@ fi
 
 source venv/bin/activate
 
-# Install Python dependencies (assuming requirements.txt exists)
+# Install Python dependencies from backend directory
 if [ -f "backend/requirements.txt" ]; then
-    pip3 install -r backend/requirements.txt
+    echo "Installing Python dependencies from backend/requirements.txt..."
+    pip install -r backend/requirements.txt
 fi
 
 # Install Node.js dependencies
@@ -57,7 +58,86 @@ cd frontend
 npm install
 cd ..
 
+# Create systemd service files with current user
+echo "Creating systemd service files..."
+
+# Create backend service file
+cat > scripts/dashboard-backend.service << EOF
+[Unit]
+Description=Dashboard Backend Service
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=$USER
+Group=$USER
+WorkingDirectory=/opt/dashboard
+ExecStart=/opt/dashboard/scripts/start-backend.sh
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Create frontend service file
+cat > scripts/dashboard-frontend.service << EOF
+[Unit]
+Description=Dashboard Frontend Service
+After=network.target dashboard-backend.service
+Wants=network-online.target
+Requires=dashboard-backend.service
+
+[Service]
+Type=exec
+User=$USER
+Group=$USER
+WorkingDirectory=/opt/dashboard/frontend
+ExecStart=/opt/dashboard/scripts/start-frontend.sh
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Create update service file
+cat > scripts/dashboard-update.service << EOF
+[Unit]
+Description=Dashboard Update Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=$USER
+Group=$USER
+ExecStart=/usr/local/bin/update-dashboard.sh
+EOF
+
+# Create update timer file
+cat > scripts/dashboard-update.timer << EOF
+[Unit]
+Description=Dashboard Update Timer
+Requires=dashboard-update.service
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
 # Make scripts executable
+echo "Making scripts executable..."
+chmod +x scripts/*.sh
 chmod +x /opt/dashboard/scripts/*.sh
 
 # Copy systemd service files
