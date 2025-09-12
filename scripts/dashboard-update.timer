@@ -1,4 +1,3 @@
-# scripts/dashboard-update.timer - Timer to trigger periodic updates
 [Unit]
 Description=Dashboard Update Timer
 Requires=dashboard-update.service
