@@ -21,7 +21,13 @@ git pull origin main >> $LOG_FILE 2>&1
 # Install any new Python dependencies
 if [ -f "backend/requirements.txt" ]; then
     echo "$(date): Installing Python dependencies..." >> $LOG_FILE
-    pip3 install -r backend/requirements.txt >> $LOG_FILE 2>&1
+    # Check if virtual environment exists
+    if [ ! -d "venv" ]; then
+        echo "$(date): Creating virtual environment..." >> $LOG_FILE
+        python3 -m venv venv
+    fi
+    source venv/bin/activate
+    pip install -r backend/requirements.txt >> $LOG_FILE 2>&1
 fi
 
 # Install any new Node.js dependencies

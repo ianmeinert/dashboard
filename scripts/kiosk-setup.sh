@@ -37,6 +37,16 @@ else
     git pull
 fi
 
+# Create Python virtual environment if it doesn't exist
+if [ ! -d "venv" ]; then
+    echo "Creating Python virtual environment..."
+    python3 -m venv venv
+else
+    echo "Virtual environment already exists, skipping creation..."
+fi
+
+source venv/bin/activate
+
 # Install Python dependencies (assuming requirements.txt exists)
 if [ -f "backend/requirements.txt" ]; then
     pip3 install -r backend/requirements.txt
