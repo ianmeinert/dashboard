@@ -38,8 +38,8 @@ else
 fi
 
 # Install Python dependencies (assuming requirements.txt exists)
-if [ -f "requirements.txt" ]; then
-    pip3 install -r requirements.txt
+if [ -f "backend/requirements.txt" ]; then
+    pip3 install -r backend/requirements.txt
 fi
 
 # Install Node.js dependencies
