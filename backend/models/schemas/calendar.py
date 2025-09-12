@@ -28,3 +28,5 @@ class CalendarEvent(BaseModel):
     calendarName: str
     description: Optional[str] = None
     location: Optional[str] = None
+    color_id: Optional[str] = None
+    color_class: Optional[str] = None

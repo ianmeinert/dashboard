@@ -17,8 +17,10 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-from .sync_token_db import (get_all_calendar_colors, get_sync_token,
-                            set_calendar_color, set_sync_token)
+from .sync_token_db import (get_sync_token,
+                            set_sync_token)
+
+from ..models.schemas.calendar import CalendarEvent
 
 logger = logging.getLogger(__name__)
 
@@ -31,34 +33,6 @@ SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 CREDENTIALS_FILE = os.path.join(DATA_DIR, "credentials.json")
 TOKEN_FILE = os.path.join(DATA_DIR, "token.json")
-
-
-class CalendarEvent:
-    """Represents a calendar event."""
-    
-    def __init__(
-        self,
-        id: str,
-        summary: str,
-        start: str,
-        end: str,
-        description: str = "",
-        location: str = "",
-        calendarId: str = "",
-        calendarName: str = "",
-        color_id: Optional[str] = None,
-        color_class: str = ""
-    ):
-        self.id = id
-        self.summary = summary
-        self.start = start
-        self.end = end
-        self.description = description
-        self.location = location
-        self.calendarId = calendarId
-        self.calendarName = calendarName
-        self.color_id = color_id
-        self.color_class = color_class
 
 
 def get_google_calendar_service():
@@ -131,6 +105,8 @@ async def get_upcoming_events(start: Optional[str] = None, end: Optional[str] = 
         for calendar in calendars:
             calendar_id = calendar['id']
             calendar_name = calendar.get('summary', 'Unknown')
+            colorId = calendar.get('colorId', "1")
+            logger.info(f"Processing calendar: {calendar} with colorId: {colorId}")
             
             logger.debug(f"Fetching events for calendar: {calendar_name}", extra={
                 "extra_fields": {
@@ -170,6 +146,7 @@ async def get_upcoming_events(start: Optional[str] = None, end: Optional[str] = 
                 
                 # Process events
                 for event in events:
+                    logger.info(f"Processing color_id: {event.get('colorId')} for calendar {calendar_name}")
                     event_obj = CalendarEvent(
                         id=event['id'],
                         summary=event.get('summary', 'No Title'),
@@ -180,7 +157,7 @@ async def get_upcoming_events(start: Optional[str] = None, end: Optional[str] = 
                         calendarId=calendar_id,
                         calendarName=calendar_name,
                         color_id=event.get('colorId'),
-                        color_class=get_calendar_color_class(event.get('colorId'))
+                        color_class = f"{calendar.get('backgroundColor', '')} {calendar.get('foregroundColor', '')}".strip()
                     )
                     all_events.append(event_obj)
                 
@@ -192,6 +169,7 @@ async def get_upcoming_events(start: Optional[str] = None, end: Optional[str] = 
                     events = events_result.get('items', [])
                     
                     for event in events:
+                        logger.debug(f"Processing color_id: {event.get('colorId')} for calendar {calendar_name}")
                         event_obj = CalendarEvent(
                             id=event['id'],
                             summary=event.get('summary', 'No Title'),
@@ -202,7 +180,8 @@ async def get_upcoming_events(start: Optional[str] = None, end: Optional[str] = 
                             calendarId=calendar_id,
                             calendarName=calendar_name,
                             color_id=event.get('colorId'),
-                            color_class=get_calendar_color_class(event.get('colorId'))
+                            color_class = f"{calendar.get('backgroundColor', '')} {calendar.get('foregroundColor', '')}".strip()
+
                         )
                         all_events.append(event_obj)
                     
@@ -225,25 +204,3 @@ async def get_upcoming_events(start: Optional[str] = None, end: Optional[str] = 
     except Exception as e:
         logger.error(f"Failed to fetch Google Calendar events: {type(e).__name__}: {str(e)}", exc_info=True)
         raise
-
-
-def get_calendar_color_class(color_id: Optional[str]) -> str:
-    """Get CSS class for calendar color."""
-    if not color_id:
-        return "calendar-default"
-    
-    color_mapping = {
-        "1": "calendar-lavender",
-        "2": "calendar-sage",
-        "3": "calendar-grape",
-        "4": "calendar-flamingo",
-        "5": "calendar-banana",
-        "6": "calendar-tangerine",
-        "7": "calendar-peacock",
-        "8": "calendar-graphite",
-        "9": "calendar-blueberry",
-        "10": "calendar-basil",
-        "11": "calendar-tomato"
-    }
-    
-    return color_mapping.get(color_id, "calendar-default") 

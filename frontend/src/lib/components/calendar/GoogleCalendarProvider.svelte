@@ -94,19 +94,6 @@ const fallbackColorPalette = [
   "bg-rose-100 text-rose-800 hover:bg-rose-200 border-rose-400",
 ];
 
-async function fetchCalendarColors() {
-  try {
-    const response = await serviceApi.calendar.get('/colors');
-    const colors = response.data;
-    for (const [calendarId, colorInfo] of Object.entries(colors)) {
-      calendarColors[calendarId] = (colorInfo as { color_class: string }).color_class;
-    }
-    saveToCache();
-  } catch (e) {
-    assignFallbackColors();
-  }
-}
-
 function assignFallbackColors() {
   const calendarIds = Array.from(new Set(events.map(e => e.calendarId)));
   calendarIds.forEach((id: string, idx: number) => {
@@ -236,7 +223,6 @@ onMount(async () => {
       ensureCurrentMonthData();
     });
   }
-  await fetchCalendarColors();
   await loadVisibleAndAdjacentMonths();
 });
 

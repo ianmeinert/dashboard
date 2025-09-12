@@ -5,7 +5,6 @@ Provides endpoints for Google Calendar integration.
 
 Features:
 - /events: Get upcoming events from Google Calendar
-- /colors: Get calendar color assignments
 """
 
 from typing import Any, Dict, List
@@ -15,7 +14,6 @@ from fastapi import APIRouter, HTTPException, Query, status
 from ..models.schemas.calendar import CalendarEvent
 from ..services.calendar_service import get_upcoming_events
 from ..services.monitoring_service import log_error, monitor_performance
-from ..services.sync_token_db import get_all_calendar_colors
 
 calendar_router = APIRouter()
 
@@ -47,21 +45,3 @@ async def get_events(
         print(exc)
         raise HTTPException(status_code=500, detail=f"Failed to fetch events: {exc}") from exc
     return events
-
-@calendar_router.get("/colors", response_model=Dict[str, Dict[str, Any]])
-@monitor_performance("/api/calendar/colors")
-@log_error("CALENDAR_COLORS_ERROR")
-async def get_calendar_colors() -> Dict[str, Dict[str, Any]]:
-    """Get all calendar color assignments.
-
-    Returns:
-        Dict mapping calendar_id to color information
-    Raises:
-        HTTPException: If fetching colors fails
-    """
-    try:
-        colors = get_all_calendar_colors()
-        return colors
-    except Exception as exc:
-        print(exc)
-        raise HTTPException(status_code=500, detail=f"Failed to fetch calendar colors: {exc}") from exc
