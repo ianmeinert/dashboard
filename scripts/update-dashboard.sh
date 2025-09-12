@@ -19,9 +19,9 @@ echo "$(date): Updates found, pulling changes..." >> $LOG_FILE
 git pull origin main >> $LOG_FILE 2>&1
 
 # Install any new Python dependencies
-if [ -f "requirements.txt" ]; then
+if [ -f "backend/requirements.txt" ]; then
     echo "$(date): Installing Python dependencies..." >> $LOG_FILE
-    pip3 install -r requirements.txt >> $LOG_FILE 2>&1
+    pip3 install -r backend/requirements.txt >> $LOG_FILE 2>&1
 fi
 
 # Install any new Node.js dependencies
