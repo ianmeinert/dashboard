@@ -95,8 +95,8 @@ sleep 10
 
 # Start Chromium in kiosk mode
 exec chromium-browser \
-    --app=http://localhost:5173 \
-    --start-fullscreen \
+    --kiosk \
+      http://localhost:5173 \
     --no-first-run \
     --disable-infobars \
     --disable-session-crashed-bubble \
