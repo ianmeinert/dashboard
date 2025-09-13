@@ -1,5 +1,8 @@
-# scripts/start-backend.sh - Start the FastAPI backend
-#!/bin/bash
+# First, delete the problematic script
+rm /opt/dashboard/scripts/start-backend.sh
+
+# Create a new one with a simple echo approach
+echo '#!/bin/bash
 
 cd /opt/dashboard
 
@@ -11,4 +14,13 @@ if [ ! -d "venv" ]; then
 fi
 
 # Use absolute path to venv python and uvicorn
-exec /opt/dashboard/venv/bin/uvicorn backend.main:app --reload --host localhost --port 8000
+exec /opt/dashboard/venv/bin/uvicorn backend.main:app --reload --host localhost --port 8000' > /opt/dashboard/scripts/start-backend.sh
+
+# Make it executable
+chmod +x /opt/dashboard/scripts/start-backend.sh
+
+# Check the file format
+file /opt/dashboard/scripts/start-backend.sh
+
+# Test it manually
+/opt/dashboard/scripts/start-backend.sh

@@ -58,6 +58,63 @@ cd frontend
 npm install
 cd ..
 
+# Fix line endings and create scripts with proper Unix format
+echo "Creating script files with proper Unix line endings..."
+
+# Create start-backend.sh
+cat > scripts/start-backend.sh << 'EOF'
+#!/bin/bash
+
+cd /opt/dashboard
+
+# Ensure virtual environment exists
+if [ ! -d "venv" ]; then
+    echo "Virtual environment not found, creating..."
+    python3 -m venv venv
+    venv/bin/pip install -r backend/requirements.txt
+fi
+
+# Use absolute path to venv python and uvicorn
+exec /opt/dashboard/venv/bin/uvicorn backend.main:app --reload --host localhost --port 8000
+EOF
+
+# Create start-frontend.sh
+cat > scripts/start-frontend.sh << 'EOF'
+#!/bin/bash
+
+cd /opt/dashboard/frontend
+exec npm run dev -- --host localhost --port 5173
+EOF
+
+# Create start-kiosk.sh
+cat > scripts/start-kiosk.sh << 'EOF'
+#!/bin/bash
+
+# Wait for services to be ready
+sleep 10
+
+# Start Chromium in kiosk mode
+exec chromium-browser \
+    --kiosk \
+    --no-first-run \
+    --disable-infobars \
+    --disable-session-crashed-bubble \
+    --disable-translate \
+    --disable-features=VizDisplayCompositor \
+    --start-fullscreen \
+    --app=http://localhost:5173
+EOF
+
+# Create manual-update.sh
+cat > scripts/manual-update.sh << 'EOF'
+#!/bin/bash
+
+echo "Checking for updates..."
+/usr/local/bin/update-dashboard.sh
+
+echo "Update check complete. Services restarted if needed."
+EOF
+
 # Create systemd service files with current user
 echo "Creating systemd service files..."
 
@@ -78,6 +135,7 @@ Restart=always
 RestartSec=3
 StandardOutput=journal
 StandardError=journal
+Environment=PYTHONPATH=/opt/dashboard
 
 [Install]
 WantedBy=multi-user.target
