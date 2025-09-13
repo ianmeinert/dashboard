@@ -95,14 +95,14 @@ sleep 10
 
 # Start Chromium in kiosk mode
 exec chromium-browser \
-    --kiosk \
+    --app=http://localhost:5173 \
+    --start-fullscreen \
     --no-first-run \
     --disable-infobars \
     --disable-session-crashed-bubble \
     --disable-translate \
-    --disable-features=VizDisplayCompositor \
-    --start-fullscreen \
-    --app=http://localhost:5173
+    --disable-web-security \
+    --enable-features=OverlayScrollbar
 EOF
 
 # Create manual-update.sh
@@ -227,6 +227,12 @@ echo "Services will auto-update via timer"
 # Setup chromium kiosk mode
 echo "Setting up Chromium kiosk mode..."
 mkdir -p ~/.config/autostart
+
+# Ensure chromium is installed
+if ! command -v chromium-browser &> /dev/null; then
+    echo "Installing Chromium..."
+    sudo apt install chromium-browser -y
+fi
 
 cat > ~/.config/autostart/kiosk.desktop << EOF
 [Desktop Entry]
