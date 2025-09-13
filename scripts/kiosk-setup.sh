@@ -93,16 +93,10 @@ cat > scripts/start-kiosk.sh << 'EOF'
 # Wait for services to be ready
 sleep 10
 
-# Start Chromium in kiosk mode
-exec chromium-browser \
+# Start Firefox in kiosk mode
+exec firefox \
     --kiosk \
-      http://localhost:5173 \
-    --no-first-run \
-    --disable-infobars \
-    --disable-session-crashed-bubble \
-    --disable-translate \
-    --disable-web-security \
-    --enable-features=OverlayScrollbar
+      http://localhost:5173
 EOF
 
 # Create manual-update.sh
@@ -228,10 +222,10 @@ echo "Services will auto-update via timer"
 echo "Setting up Chromium kiosk mode..."
 mkdir -p ~/.config/autostart
 
-# Ensure chromium is installed
-if ! command -v chromium-browser &> /dev/null; then
-    echo "Installing Chromium..."
-    sudo apt install chromium-browser -y
+# Ensure firefox is installed
+if ! command -v firefox &> /dev/null; then
+    echo "Installing Firefox..."
+    sudo apt install firefox -y
 fi
 
 cat > ~/.config/autostart/kiosk.desktop << EOF

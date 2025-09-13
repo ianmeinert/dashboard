@@ -4,13 +4,7 @@
 # Wait for services to be ready
 sleep 10
 
-# Start Chromium in kiosk mode
-exec chromium-browser \
-    --app=http://localhost:5173 \
-    --start-fullscreen \
-    --no-first-run \
-    --disable-infobars \
-    --disable-session-crashed-bubble \
-    --disable-translate \
-    --disable-web-security \
-    --enable-features=OverlayScrollbar
+# Start Firefox in kiosk mode
+exec firefox \
+    --kiosk \
+      http://localhost:5173
