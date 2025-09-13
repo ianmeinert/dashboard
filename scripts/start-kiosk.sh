@@ -4,14 +4,13 @@
 # Wait for services to be ready
 sleep 10
 
-# Enable on-screen keyboard first
-export GTK_IM_MODULE=ibus
-export QT_IM_MODULE=ibus
-
 # Start Chromium in kiosk mode
 exec chromium-browser \
-    --kiosk \
-    --enable-virtual-keyboard \
     --app=http://localhost:5173 \
+    --start-fullscreen \
     --no-first-run \
-    --touch-events=enabled
+    --disable-infobars \
+    --disable-session-crashed-bubble \
+    --disable-translate \
+    --disable-web-security \
+    --enable-features=OverlayScrollbar
