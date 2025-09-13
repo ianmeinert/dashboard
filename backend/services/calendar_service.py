@@ -6,15 +6,13 @@ Provides functionality to fetch and manage Google Calendar events.
 - Token is stored locally for persistent access.
 """
 
-import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 from .sync_token_db import (get_sync_token,
@@ -34,40 +32,44 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 CREDENTIALS_FILE = os.path.join(DATA_DIR, "credentials.json")
 TOKEN_FILE = os.path.join(DATA_DIR, "token.json")
 
-
 def get_google_calendar_service():
     """Get authenticated Google Calendar service."""
     creds = None
-    
+   
     # Load credentials securely
     try:
         if os.path.exists(TOKEN_FILE):
             creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
             logger.debug("Loaded existing Google Calendar token")
-        
-        # If there are no (valid) credentials available, let the user log in.
+       
+        # If there are no (valid) credentials available
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 logger.debug("Refreshing expired Google Calendar token")
                 creds.refresh(Request())
+                
+                # Save the refreshed credentials
+                with open(TOKEN_FILE, 'w') as token:
+                    token.write(creds.to_json())
+                logger.debug("Refreshed credentials saved")
             else:
-                logger.info("Starting Google Calendar OAuth flow")
-                flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
-                creds = flow.run_local_server(port=0)
-            
-            # Save the credentials for the next run
-            with open(TOKEN_FILE, "w", encoding="utf-8") as token:
-                token.write(creds.to_json())
-                logger.debug("Saved new Google Calendar token")
-        
+                # No valid credentials - cannot proceed in headless environment
+                logger.error("No valid Google Calendar credentials found")
+                logger.error("Initial authentication required. Please run the setup script with GUI access:")
+                logger.error("python3 setup_google_auth.py")
+                raise Exception(
+                    "Google Calendar authentication required. "
+                    "Run setup_google_auth.py on a machine with GUI access, "
+                    "then copy the token file to this server."
+                )
+       
         service = build("calendar", "v3", credentials=creds, cache_discovery=False)
         logger.info("Google Calendar service initialized successfully")
         return service
-        
+       
     except Exception as e:
         logger.error(f"Failed to initialize Google Calendar service: {type(e).__name__}")
         raise
-
 
 async def get_upcoming_events(start: Optional[str] = None, end: Optional[str] = None) -> List[CalendarEvent]:
     """Fetch Google Calendar events (all calendars) in a date range.
