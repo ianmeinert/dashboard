@@ -9,21 +9,21 @@ from datetime import date, datetime
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class ChoreFrequencyEnum(str, Enum):
     """Chore frequency options."""
-    DAILY = "daily"
-    WEEKLY = "weekly"
-    MONTHLY = "monthly"
+    DAILY = "DAILY"
+    WEEKLY = "WEEKLY"
+    MONTHLY = "MONTHLY"
 
 
 class ChoreStatusEnum(str, Enum):
     """Chore completion status."""
-    PENDING = "pending"
-    COMPLETED = "completed"
-    DISABLED = "disabled"
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    DISABLED = "DISABLED"
 
 
 # Base schemas
@@ -32,7 +32,7 @@ class ParentBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="Parent's name")
     pin: str = Field(..., min_length=4, max_length=4, description="4-digit PIN")
 
-    @validator('pin')
+    @field_validator('pin')
     def validate_pin(cls, v):
         """Validate PIN is 4 digits."""
         if not v.isdigit():
@@ -90,7 +90,7 @@ class RoomBase(BaseModel):
     description: Optional[str] = Field(None, max_length=500, description="Room description")
     color_code: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$', description="Hex color code")
 
-    @validator('color_code')
+    @field_validator('color_code')
     def validate_color_code(cls, v):
         """Validate hex color code format."""
         if v and not v.startswith('#'):
@@ -110,7 +110,7 @@ class RoomUpdate(BaseModel):
     color_code: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
     is_active: Optional[bool] = None
 
-    @validator('color_code')
+    @field_validator('color_code')
     def validate_color_code(cls, v):
         """Validate hex color code format."""
         if v and not v.startswith('#'):
@@ -137,6 +137,17 @@ class ChoreBase(BaseModel):
     description: Optional[str] = Field(None, max_length=1000, description="Chore description")
     points: int = Field(..., ge=1, le=100, description="Points awarded for completion")
     frequency: ChoreFrequencyEnum = Field(..., description="How often the chore can be done")
+    
+    @field_validator('frequency', mode='before')
+    @classmethod
+    def normalize_frequency(cls, v):
+        print(f"DEBUG: Validator called with value: '{v}', type: {type(v)}")
+        if isinstance(v, str):
+            result = v.upper()
+            print(f"DEBUG: Converting '{v}' to '{result}'")
+            return result
+        print(f"DEBUG: Returning original value: {v}")
+        return v
 
 
 class ChoreCreate(ChoreBase):

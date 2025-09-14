@@ -20,8 +20,8 @@ from sqlalchemy.orm import selectinload
 from ..core.exceptions import (DatabaseException, NotFoundException,
                                ValidationException)
 from ..models.chores import (AllowanceCalculation, Chore, ChoreCompletion,
-                             ChoreFrequency, ChoreStatus, HouseholdMember,
-                             Parent, Room, WeeklyPoints)
+                             ChoreFrequencyEnum, ChoreStatusEnum,
+                             HouseholdMember, Parent, Room, WeeklyPoints)
 from ..models.schemas.chores import (ChoreCompletionCreate, ChoreCreate,
                                      ChoreUpdate, HouseholdMemberCreate,
                                      ParentCreate, RoomCreate, RoomUpdate)
@@ -395,7 +395,7 @@ class ChoresService:
             completion = ChoreCompletion(
                 chore_id=chore_id,
                 member_id=member_id,
-                status=ChoreStatus.PENDING,
+                status=ChoreStatusEnum.PENDING,
                 points_earned=chore.points,
                 week_start=week_start
             )
@@ -424,7 +424,7 @@ class ChoresService:
                 select(ChoreCompletion)
                 .where(and_(
                     ChoreCompletion.id == completion_id,
-                    ChoreCompletion.status == ChoreStatus.PENDING
+                    ChoreCompletion.status == ChoreStatusEnum.PENDING
                 ))
             )
             completion = result.scalar_one_or_none()
@@ -438,7 +438,7 @@ class ChoresService:
                 raise ValidationException("Access denied")
             
             # Update completion status
-            completion.status = ChoreStatus.COMPLETED
+            completion.status = ChoreStatusEnum.COMPLETED
             completion.confirmed_at = datetime.utcnow()
             
             await self.db.commit()
@@ -457,7 +457,7 @@ class ChoresService:
                 .join(Chore, ChoreCompletion.chore_id == Chore.id)
                 .where(and_(
                     Chore.parent_id == parent_id,
-                    ChoreCompletion.status == ChoreStatus.PENDING
+                    ChoreCompletion.status == ChoreStatusEnum.PENDING
                 ))
                 .order_by(desc(ChoreCompletion.created_at))
             )
@@ -578,19 +578,19 @@ class ChoresService:
         """Get the start of the week (Monday) for a given date."""
         return date_obj - timedelta(days=date_obj.weekday())
 
-    def _calculate_next_available(self, frequency: ChoreFrequency) -> datetime:
+    def _calculate_next_available(self, frequency: ChoreFrequencyEnum) -> datetime:
         """Calculate when a chore will be available again based on frequency."""
         now = datetime.utcnow()
         
-        if frequency == ChoreFrequency.DAILY:
+        if frequency == ChoreFrequencyEnum.DAILY:
             return now + timedelta(days=1)
-        elif frequency == ChoreFrequency.WEEKLY:
+        elif frequency == ChoreFrequencyEnum.WEEKLY:
             # Next Monday
             days_until_monday = (7 - now.weekday()) % 7
             if days_until_monday == 0:
                 days_until_monday = 7
             return now + timedelta(days=days_until_monday)
-        elif frequency == ChoreFrequency.MONTHLY:
+        elif frequency == ChoreFrequencyEnum.MONTHLY:
             # First day of next month
             if now.month == 12:
                 next_month = now.replace(year=now.year + 1, month=1, day=1)

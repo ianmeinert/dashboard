@@ -17,18 +17,18 @@ from sqlalchemy.sql import func
 from .base import Base
 
 
-class ChoreFrequency(PyEnum):
+class ChoreFrequencyEnum(PyEnum):
     """Chore frequency options."""
-    DAILY = "daily"
-    WEEKLY = "weekly"
-    MONTHLY = "monthly"
+    DAILY = "DAILY"
+    WEEKLY = "WEEKLY"
+    MONTHLY = "MONTHLY"
 
 
-class ChoreStatus(PyEnum):
+class ChoreStatusEnum(PyEnum):
     """Chore completion status."""
-    PENDING = "pending"
-    COMPLETED = "completed"
-    DISABLED = "disabled"
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    DISABLED = "DISABLED"
 
 
 class Parent(Base):
@@ -126,7 +126,7 @@ class Chore(Base):
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     points = Column(Integer, nullable=False, default=1)
-    frequency = Column(Enum(ChoreFrequency), nullable=False, default=ChoreFrequency.DAILY)
+    frequency = Column(Enum(ChoreFrequencyEnum), nullable=False, default=ChoreFrequencyEnum.DAILY)
     is_active = Column(Boolean, nullable=False, default=True)
     room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False)
     parent_id = Column(Integer, ForeignKey("parents.id"), nullable=False)
@@ -152,7 +152,7 @@ class ChoreCompletion(Base):
     chore_id = Column(Integer, ForeignKey("chores.id"), nullable=False)
     member_id = Column(Integer, ForeignKey("household_members.id"), nullable=False)
     parent_id = Column(Integer, ForeignKey("parents.id"), nullable=True)  # For parent completions
-    status = Column(Enum(ChoreStatus), nullable=False, default=ChoreStatus.PENDING)
+    status = Column(Enum(ChoreStatusEnum), nullable=False, default=ChoreStatusEnum.PENDING)
     points_earned = Column(Integer, nullable=False, default=0)
     completed_at = Column(DateTime, nullable=True)
     confirmed_at = Column(DateTime, nullable=True)

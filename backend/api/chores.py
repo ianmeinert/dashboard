@@ -364,10 +364,15 @@ async def create_chore(
     db: AsyncSession = Depends(get_chores_db)
 ) -> ChoreResponse:
     """Create a new chore."""
+
+    logger.info(f"Received chore_data: {chore_data}")
+    logger.info(f"Frequency: {chore_data.frequency}")
+    logger.info(f"Frequency type: {type(chore_data.frequency)}")
+    
     try:
         service = ChoresService(db)
         chore = await service.create_chore(chore_data, parent_id)
-        
+        logger.info(f"Created chore: {chore}")
         return ChoreResponse(
             id=chore.id,
             name=chore.name,
