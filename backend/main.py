@@ -30,7 +30,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
-from .api import calendar, grocery, monitoring, weather
+from .api import calendar, chores, grocery, monitoring, weather
 from .core.config import settings
 from .core.exceptions import (DashboardException, handle_dashboard_exception,
                               handle_database_error, handle_generic_exception,
@@ -39,6 +39,7 @@ from .core.logging_config import log_request, log_security_event, setup_logging
 from .core.metrics import (get_metrics, record_health_check,
                            record_rate_limit_hit, setup_metrics_instrumentator)
 from .database import close_db, init_db
+from .database_chores import close_chores_db, init_chores_db
 from .services.calendar_service import get_upcoming_events
 from .services.http_client import http_client, weather_client
 from .services.security import (add_security_headers, get_client_id,
@@ -63,10 +64,15 @@ async def lifespan(app: FastAPI):
         }
     })
     
-    # Initialize database
+    # Initialize databases
     await init_db()
-    logger.info("Database initialized", extra={
+    logger.info("Main database initialized", extra={
         "extra_fields": {"database_url": settings.database_url}
+    })
+    
+    await init_chores_db()
+    logger.info("Family chores database initialized", extra={
+        "extra_fields": {"database_url": "sqlite+aiosqlite:///./data/family_chores.db"}
     })
     
     # Run migrations
@@ -85,6 +91,7 @@ async def lifespan(app: FastAPI):
     
     # Close database connections
     await close_db()
+    await close_chores_db()
     logger.info("Database connections closed")
 
 
@@ -255,6 +262,11 @@ app.include_router(
     prefix="/api/grocery", 
     tags=["grocery"]
 )
+app.include_router(
+    chores.chores_router, 
+    prefix="/api/chores", 
+    tags=["chores"]
+)
 
 # Setup Prometheus metrics instrumentator
 if settings.debug or settings.metrics_enabled:
@@ -296,6 +308,7 @@ async def root():
             "monitoring": "/api/monitoring",
             "weather": "/api/weather",
             "grocery": "/api/grocery",
+            "chores": "/api/chores",
             "health": "/health",
             "metrics": "/metrics",
             "docs": "/docs" if settings.debug else None,

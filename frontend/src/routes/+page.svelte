@@ -1,5 +1,6 @@
 <script lang="ts">
   import GoogleCalendarProvider from '$lib/components/calendar/GoogleCalendarProvider.svelte';
+  import FamilyChores from '$lib/components/chores/FamilyChores.svelte';
   import ForecastWidget from '$lib/components/ForecastWidget.svelte';
   import GroceryList from '$lib/components/GroceryList.svelte';
 
@@ -206,17 +207,7 @@
     <div class="chores-cell">
       <div class="quadrant bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md p-6 {selectedQuadrant === 'chores' ? 'selected' : ''}" tabindex="0" aria-label="Expand Family Chores" on:click={() => selectQuadrant('chores')}>
         <h2 class="text-xl font-bold mb-4 text-center">Family Chores</h2>
-        <div class="flex-1 flex items-center justify-center text-gray-400">
-          <div class="text-center">
-            <p class="mb-4">Family chores tracking coming soon…</p>
-            <p class="text-sm">This will include:</p>
-            <ul class="text-sm text-gray-500 mt-2">
-              <li>• Daily/weekly chore assignments</li>
-              <li>• Progress tracking</li>
-              <li>• Reward system</li>
-            </ul>
-          </div>
-        </div>
+        <FamilyChores compact={selectedQuadrant !== 'chores'} />
         {#if selectedQuadrant !== 'chores'}
           <div class="quadrant-overlay" tabindex="-1" aria-hidden="true"></div>
         {/if}
