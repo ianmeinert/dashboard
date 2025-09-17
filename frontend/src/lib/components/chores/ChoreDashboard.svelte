@@ -6,7 +6,7 @@
 -->
 
 <script lang="ts">
-  import { availableChores, chores, choresStore, currentMemberAllowance, error, loading, rooms, selectedRoomId, weeklyPointsSummary, type Chore, type Room } from '$lib/stores/chores.js';
+  import { availableChores, chores, choresStore, currentMember, currentMemberAllowance, error, loading, rooms, selectedRoomId, weeklyPointsSummary, type Chore, type Room } from '$lib/stores/chores.js';
   import { onMount } from 'svelte';
   import ChoreList from './ChoreList.svelte';
   import ProgressSummary from './ProgressSummary.svelte';
@@ -32,6 +32,7 @@
   $: errorMessage = $error;
   $: weeklySummary = $weeklyPointsSummary;
   $: allowanceSummary = $currentMemberAllowance;
+  $: currentMemberValue = $currentMember;
 
   onMount(() => {
     // Load dashboard data
@@ -136,6 +137,7 @@
           availableChores={getAvailableChores()}
           completedChores={getCompletedChores()}
           pendingChores={getPendingChores()}
+          currentMember={currentMemberValue}
         />
       {/if}
 

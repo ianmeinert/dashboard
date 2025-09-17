@@ -27,7 +27,11 @@
     if (members.length === 0) {
       const parent = $choresStore.currentParent;
       if (parent) {
+        // Parent is logged in, load members for this parent
         choresStore.loadHouseholdMembers(parent.id);
+      } else {
+        // No parent logged in, load all members for selection
+        choresStore.loadAllHouseholdMembers();
       }
     }
   });
@@ -36,24 +40,12 @@
     onMemberSelected(member);
   }
 
-  function getAgeCategoryColor(category: string): string {
-    const colors = {
-      child: 'bg-pink-100 text-pink-800',
-      preteen: 'bg-orange-100 text-orange-800',
-      teenager: 'bg-blue-100 text-blue-800',
-      adult: 'bg-gray-100 text-gray-800'
-    };
-    return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+  function getRoleColor(isParent: boolean): string {
+    return isParent ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800';
   }
 
-  function getAgeCategoryLabel(category: string): string {
-    const labels = {
-      child: 'Child',
-      preteen: 'Preteen',
-      teenager: 'Teenager',
-      adult: 'Adult'
-    };
-    return labels[category as keyof typeof labels] || 'Unknown';
+  function getRoleLabel(isParent: boolean): string {
+    return isParent ? 'Parent' : 'Household Member';
   }
 </script>
 
@@ -129,11 +121,6 @@
                 <h3 class="text-lg font-medium text-gray-900 truncate">
                   {member.name}
                 </h3>
-                {#if member.is_parent}
-                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                    Parent
-                  </span>
-                {/if}
               </div>
               
               <div class="flex items-center space-x-2 mt-1">
@@ -141,8 +128,8 @@
                   Age {member.age}
                 </span>
                 <span class="text-gray-300">•</span>
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {getAgeCategoryColor(member.age_category)}">
-                  {getAgeCategoryLabel(member.age_category)}
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {getRoleColor(member.is_parent)}">
+                  {getRoleLabel(member.is_parent)}
                 </span>
               </div>
             </div>

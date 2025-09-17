@@ -146,6 +146,18 @@ class ChoresService:
         except Exception as e:
             raise DatabaseException(f"Failed to get household members: {str(e)}", operation="select")
 
+    async def get_all_household_members(self) -> List[HouseholdMember]:
+        """Get all household members (for member selection without parent auth)."""
+        try:
+            result = await self.db.execute(
+                select(HouseholdMember)
+                .where(HouseholdMember.is_active == True)
+                .order_by(asc(HouseholdMember.name))
+            )
+            return result.scalars().all()
+        except Exception as e:
+            raise DatabaseException(f"Failed to get all household members: {str(e)}", operation="select")
+
     async def get_household_member(self, member_id: int) -> Optional[HouseholdMember]:
         """Get household member by ID."""
         try:

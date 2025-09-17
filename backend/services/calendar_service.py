@@ -15,10 +15,8 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
-from .sync_token_db import (get_sync_token,
-                            set_sync_token)
-
 from ..models.schemas.calendar import CalendarEvent
+from .sync_token_db import get_sync_token, set_sync_token
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +25,25 @@ logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
+
+# Google Calendar color ID to Tailwind CSS class mapping
+COLOR_ID_MAP = {
+    '1': 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-400',
+    '2': 'bg-green-100 text-green-800 hover:bg-green-200 border-green-400',
+    '3': 'bg-purple-100 text-purple-800 hover:bg-purple-200 border-purple-400',
+    '4': 'bg-red-100 text-red-800 hover:bg-red-200 border-red-400',
+    '5': 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-400',
+    '6': 'bg-orange-100 text-orange-800 hover:bg-orange-200 border-orange-400',
+    '7': 'bg-turquoise-100 text-turquoise-800 hover:bg-turquoise-200 border-turquoise-400',
+    '8': 'bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-400',
+    '9': 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-400',
+    '10': 'bg-green-100 text-green-800 hover:bg-green-200 border-green-400',
+    '11': 'bg-red-100 text-red-800 hover:bg-red-200 border-red-400',
+}
+
+def get_color_class_from_id(color_id: str) -> str:
+    """Convert Google Calendar color ID to Tailwind CSS classes."""
+    return COLOR_ID_MAP.get(color_id, 'bg-gray-100 text-gray-800 hover:bg-gray-200 border-gray-400')
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 CREDENTIALS_FILE = os.path.join(DATA_DIR, "credentials.json")
@@ -159,7 +176,7 @@ async def get_upcoming_events(start: Optional[str] = None, end: Optional[str] = 
                         calendarId=calendar_id,
                         calendarName=calendar_name,
                         color_id=event.get('colorId'),
-                        color_class = f"{calendar.get('backgroundColor', '')} {calendar.get('foregroundColor', '')}".strip()
+                        color_class = get_color_class_from_id(calendar.get('colorId', '1'))
                     )
                     all_events.append(event_obj)
                 
@@ -182,8 +199,7 @@ async def get_upcoming_events(start: Optional[str] = None, end: Optional[str] = 
                             calendarId=calendar_id,
                             calendarName=calendar_name,
                             color_id=event.get('colorId'),
-                            color_class = f"{calendar.get('backgroundColor', '')} {calendar.get('foregroundColor', '')}".strip()
-
+                            color_class = get_color_class_from_id(calendar.get('colorId', '1'))
                         )
                         all_events.append(event_obj)
                     

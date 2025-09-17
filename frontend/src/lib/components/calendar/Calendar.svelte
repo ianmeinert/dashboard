@@ -112,7 +112,9 @@
   }
 
   function getEventColorClass(event: CalendarEvent): string {
-    return calendarColors[event.calendarId] || "bg-gray-200 text-gray-700";
+    const color = calendarColors[event.calendarId] || "bg-gray-200 text-gray-700";
+    console.log(`Getting color for event ${event.summary} (calendar: ${event.calendarId}): ${color}`);
+    return color;
   }
 
   function cellDateStr(cell: { day: number; month: number; year: number; isCurrent: boolean }): string {

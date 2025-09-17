@@ -54,6 +54,8 @@ function loadFromCache() {
     if (cachedColors) {
       calendarColors = JSON.parse(cachedColors);
     }
+    // Ensure fallback colors are assigned for any calendars without colors
+    assignFallbackColors();
   } catch (e) {
     clearCache();
   }
@@ -96,11 +98,15 @@ const fallbackColorPalette = [
 
 function assignFallbackColors() {
   const calendarIds = Array.from(new Set(events.map(e => e.calendarId)));
+  console.log('Calendar IDs:', calendarIds);
+  console.log('Current calendarColors:', calendarColors);
   calendarIds.forEach((id: string, idx: number) => {
     if (!calendarColors[id]) {
       calendarColors[id] = fallbackColorPalette[idx % fallbackColorPalette.length];
+      console.log(`Assigning fallback color for calendar ${id}: ${calendarColors[id]}`);
     }
   });
+  console.log('Final calendarColors:', calendarColors);
 }
 
 async function fetchMonthEvents(year: number, month: number) {
@@ -133,13 +139,20 @@ function updateEventsForCurrentMonth() {
   const key = getMonthKey(currentYear, currentMonth);
   events = monthEvents[key] || [];
   loading = !monthEvents[key];
-  // Update calendarNames
+  // Update calendarNames and calendarColors
   calendarNames = {};
+  // Don't reset calendarColors - preserve existing colors
   for (const event of events) {
     if (event.calendarId && event.calendarName) {
       calendarNames[event.calendarId] = event.calendarName;
     }
+    if (event.calendarId && event.color_class) {
+      calendarColors[event.calendarId] = event.color_class;
+      console.log(`Setting color for calendar ${event.calendarId}: ${event.color_class}`);
+    }
   }
+  // Assign fallback colors for calendars without color_class
+  assignFallbackColors();
 }
 
 function prevMonth() {
@@ -252,4 +265,13 @@ onDestroy(() => {
       loadVisibleAndAdjacentMonths();
     }
   }}
-/> 
+/>
+
+<!-- Debug info -->
+{#if events.length > 0}
+  <div class="mt-4 p-2 bg-gray-100 text-xs">
+    <div>Events: {events.length}</div>
+    <div>Calendar Colors: {JSON.stringify(calendarColors)}</div>
+    <div>Calendar Names: {JSON.stringify(calendarNames)}</div>
+  </div>
+{/if} 

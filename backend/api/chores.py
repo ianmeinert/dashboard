@@ -192,6 +192,38 @@ async def get_household_members(
         raise HTTPException(status_code=500, detail="Failed to get household members")
 
 
+@chores_router.get("/members/all", response_model=List[HouseholdMemberResponse])
+@monitor_performance("/api/chores/members/all")
+@log_error("CHORES_MEMBERS_ALL_GET_ERROR")
+async def get_all_household_members(
+    request: Request,
+    db: AsyncSession = Depends(get_chores_db)
+) -> List[HouseholdMemberResponse]:
+    """Get all household members (for member selection without parent auth)."""
+    try:
+        service = ChoresService(db)
+        members = await service.get_all_household_members()
+        
+        return [
+            HouseholdMemberResponse(
+                id=member.id,
+                name=member.name,
+                date_of_birth=member.date_of_birth,
+                is_parent=member.is_parent,
+                age=member.age,
+                age_category=member.age_category,
+                is_active=member.is_active,
+                parent_id=member.parent_id,
+                created_at=member.created_at,
+                updated_at=member.updated_at
+            )
+            for member in members
+        ]
+    except DatabaseException as e:
+        logger.error(f"Database error getting all household members: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get household members")
+
+
 @chores_router.get("/members/{member_id}", response_model=HouseholdMemberResponse)
 @monitor_performance("/api/chores/members/{member_id}")
 @log_error("CHORES_MEMBER_GET_ERROR")

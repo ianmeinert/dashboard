@@ -12,6 +12,7 @@
   export let availableChores: number;
   export let completedChores: number;
   export let pendingChores: number;
+  export let currentMember: any = null;
 
   function getProgressPercentage(): number {
     if (totalChores === 0) return 0;
@@ -122,8 +123,7 @@
           </p>
           
           <p class="text-xs text-gray-500">
-            {allowanceSummary.age_category === 'adult' ? 'No allowance (adult)' : 
-             allowanceSummary.age_category === 'teenager' ? `$${allowanceSummary.rate_per_point}/point` :
+            {currentMember?.is_parent ? 'No allowance (parent)' : 
              `$${allowanceSummary.rate_per_point}/point`}
           </p>
         </div>

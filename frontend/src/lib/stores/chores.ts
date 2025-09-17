@@ -354,6 +354,28 @@ export const choresStore = {
     }
   },
 
+  async loadAllHouseholdMembers(): Promise<void> {
+    update(state => ({ ...state, loading: true, error: null }));
+    
+    try {
+      const response = await serviceApi.chores.get('/members/all');
+      const members: HouseholdMember[] = response.data;
+      
+      update(state => ({
+        ...state,
+        householdMembers: members,
+        loading: false,
+        error: null
+      }));
+    } catch (error) {
+      update(state => ({
+        ...state,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Failed to load household members'
+      }));
+    }
+  },
+
   setCurrentMember(member: HouseholdMember | null): void {
     update(state => ({ ...state, currentMember: member }));
   },
