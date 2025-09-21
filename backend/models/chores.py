@@ -28,6 +28,7 @@ class ChoreStatusEnum(PyEnum):
     """Chore completion status."""
     PENDING = "PENDING"
     COMPLETED = "COMPLETED"
+    REJECTED = "REJECTED"
     DISABLED = "DISABLED"
 
 

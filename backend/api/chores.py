@@ -17,6 +17,7 @@ from ..core.exceptions import (DatabaseException, NotFoundException,
                                ValidationException)
 from ..database_chores import get_chores_db
 from ..models.schemas.chores import (AllowanceCalculationResponse,
+                                     ChoreCompletionConfirm,
                                      ChoreCompletionCreate,
                                      ChoreCompletionResponse, ChoreCreate,
                                      ChoreDashboardResponse,
@@ -557,7 +558,19 @@ async def complete_chore(
             created_at=completion.created_at
         )
     except ValidationException as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        error_msg = str(e)
+        # Provide more specific error responses for better UX
+        if "point cap reached" in error_msg.lower():
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": error_msg,
+                    "error_code": "WEEKLY_POINT_CAP_EXCEEDED",
+                    "type": "validation_error"
+                }
+            )
+        else:
+            raise HTTPException(status_code=400, detail=error_msg)
     except DatabaseException as e:
         logger.error(f"Database error completing chore: {e}")
         raise HTTPException(status_code=500, detail="Failed to complete chore")
@@ -570,12 +583,17 @@ async def confirm_chore_completion(
     request: Request,
     completion_id: int,
     parent_id: int,
+    confirmation_data: ChoreCompletionConfirm,
     db: AsyncSession = Depends(get_chores_db)
 ) -> ChoreCompletionResponse:
-    """Confirm a chore completion by parent."""
+    """Confirm or reject a chore completion by parent."""
     try:
         service = ChoresService(db)
-        completion = await service.confirm_chore_completion(completion_id, parent_id)
+        completion = await service.confirm_chore_completion(
+            completion_id,
+            parent_id,
+            confirmation_data.confirmed
+        )
         
         return ChoreCompletionResponse(
             id=completion.id,

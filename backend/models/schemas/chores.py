@@ -23,6 +23,7 @@ class ChoreStatusEnum(str, Enum):
     """Chore completion status."""
     PENDING = "PENDING"
     COMPLETED = "COMPLETED"
+    REJECTED = "REJECTED"
     DISABLED = "DISABLED"
 
 
@@ -190,6 +191,11 @@ class ChoreCompletionBase(BaseModel):
 class ChoreCompletionCreate(ChoreCompletionBase):
     """Schema for creating a chore completion."""
     pass
+
+
+class ChoreCompletionConfirm(BaseModel):
+    """Schema for confirming/rejecting a chore completion."""
+    confirmed: bool = Field(..., description="True to confirm, False to reject")
 
 
 class ChoreCompletionResponse(ChoreCompletionBase):

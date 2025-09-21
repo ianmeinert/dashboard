@@ -6,10 +6,13 @@ authentication, room management, chore operations, and allowance calculations.
 """
 
 import hashlib
+import logging
 import secrets
 from datetime import date, datetime, timedelta
 from enum import Enum
 from typing import List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy import and_, asc, desc, func, or_
 from sqlalchemy.exc import IntegrityError
@@ -425,12 +428,15 @@ class ChoresService:
             await self._update_weekly_points(member_id, week_start, chore.points)
             
             return completion
+        except ValidationException:
+            await self.db.rollback()
+            raise  # Re-raise ValidationException to preserve specific error message
         except Exception as e:
             await self.db.rollback()
             raise DatabaseException(f"Failed to complete chore: {str(e)}", operation="insert")
 
-    async def confirm_chore_completion(self, completion_id: int, parent_id: int) -> ChoreCompletion:
-        """Confirm a chore completion by parent."""
+    async def confirm_chore_completion(self, completion_id: int, parent_id: int, confirmed: bool = True) -> ChoreCompletion:
+        """Confirm or reject a chore completion by parent."""
         try:
             result = await self.db.execute(
                 select(ChoreCompletion)
@@ -449,8 +455,11 @@ class ChoresService:
             if not chore or chore.parent_id != parent_id:
                 raise ValidationException("Access denied")
             
-            # Update completion status
-            completion.status = ChoreStatusEnum.COMPLETED
+            # Update completion status based on parent decision
+            if confirmed:
+                completion.status = ChoreStatusEnum.COMPLETED
+            else:
+                completion.status = ChoreStatusEnum.REJECTED
             completion.confirmed_at = datetime.utcnow()
             
             await self.db.commit()
