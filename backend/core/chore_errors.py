@@ -16,6 +16,7 @@ class ChoreErrorCode(str, Enum):
 
     # Chore completion errors
     WEEKLY_POINT_CAP_EXCEEDED = "WEEKLY_POINT_CAP_EXCEEDED"
+    WEEKLY_POINT_CAP_WARNING = "WEEKLY_POINT_CAP_WARNING"
     CHORE_FREQUENCY_RESTRICTION = "CHORE_FREQUENCY_RESTRICTION"
     CHORE_NOT_AVAILABLE = "CHORE_NOT_AVAILABLE"
     CHORE_ALREADY_COMPLETED = "CHORE_ALREADY_COMPLETED"
@@ -63,6 +64,12 @@ CHORE_ERROR_MESSAGES = {
         "message": "Weekly point cap reached (30 points)",
         "user_message": "🎯 Weekly Goal Reached!\nYou've earned your maximum 30 points this week. Great job!",
         "action": "Try again next week or ask a parent to confirm pending tasks."
+    },
+
+    ChoreErrorCode.WEEKLY_POINT_CAP_WARNING: {
+        "message": "Approaching weekly point cap",
+        "user_message": "⚠️ Almost There!\nYou're close to your 30-point weekly goal. Keep going!",
+        "action": "Complete a few more chores to reach your goal!"
     },
 
     ChoreErrorCode.CHORE_FREQUENCY_RESTRICTION: {
@@ -205,5 +212,29 @@ def create_frequency_restriction_error(
     return ChoreValidationException(
         error_code=ChoreErrorCode.CHORE_FREQUENCY_RESTRICTION,
         message=f"Chore '{chore_name}' is not available until {next_available}",
+        details=details
+    )
+
+
+def create_point_cap_warning(
+    current_points: int,
+    potential_points: int,
+    max_points: int = 30
+) -> ChoreValidationException:
+    """Create a warning when approaching weekly point cap."""
+    points_remaining = max_points - current_points
+    details = {
+        "current_points": current_points,
+        "potential_points": potential_points,
+        "max_points": max_points,
+        "points_remaining": points_remaining,
+        "warning_threshold": True,
+        "user_message": f"⚠️ Almost There!\nYou have {current_points} points. This chore will earn {potential_points} more. Only {points_remaining} points until you reach your weekly goal!",
+        "suggested_action": f"Complete this chore and {max(0, (points_remaining - potential_points) // 5)} more to reach your goal!"
+    }
+
+    return ChoreValidationException(
+        error_code=ChoreErrorCode.WEEKLY_POINT_CAP_WARNING,
+        message=f"Approaching weekly point cap ({current_points + potential_points}/{max_points} points)",
         details=details
     )

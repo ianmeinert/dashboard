@@ -30,7 +30,7 @@ from ..models.schemas.chores import (AllowanceCalculationResponse,
                                      MemberSelectionResponse, ParentCreate,
                                      ParentDashboardResponse, ParentResponse,
                                      RoomCreate, RoomResponse, RoomUpdate,
-                                     WeeklyPointsResponse)
+                                     WeeklyPointsResponse, WeeklyPointsSummary)
 from ..services.chores_service import ChoresService
 from ..services.monitoring_service import log_error, monitor_performance
 
@@ -546,19 +546,28 @@ async def complete_chore(
     try:
         service = ChoresService(db)
         completion = await service.complete_chore(chore_id, member_id)
-        
-        return ChoreCompletionResponse(
-            id=completion.id,
-            chore_id=completion.chore_id,
-            member_id=completion.member_id,
-            parent_id=completion.parent_id,
-            status=completion.status,
-            points_earned=completion.points_earned,
-            completed_at=completion.completed_at,
-            confirmed_at=completion.confirmed_at,
-            week_start=completion.week_start,
-            created_at=completion.created_at
-        )
+
+        # Build response with optional warning information
+        response_data = {
+            "id": completion.id,
+            "chore_id": completion.chore_id,
+            "member_id": completion.member_id,
+            "parent_id": completion.parent_id,
+            "status": completion.status,
+            "points_earned": completion.points_earned,
+            "completed_at": completion.completed_at,
+            "confirmed_at": completion.confirmed_at,
+            "week_start": completion.week_start,
+            "created_at": completion.created_at
+        }
+
+        # Add warning information if present
+        if hasattr(completion, '_warning_info'):
+            response_data["weekly_points_warning"] = completion._warning_info
+            response_data["current_weekly_points"] = completion._current_weekly_points
+            response_data["weekly_points_remaining"] = completion._weekly_points_remaining
+
+        return ChoreCompletionResponse(**response_data)
     except ChoreValidationException as e:
         raise HTTPException(
             status_code=e.status_code,
@@ -821,3 +830,35 @@ async def chore_events_stream(
     - chore_available: When a chore becomes available again
     """
     return await sse_manager.connect(request, parent_id)
+
+
+@chores_router.get("/members/{member_id}/weekly-status", response_model=WeeklyPointsSummary)
+@monitor_performance("/api/chores/members/{member_id}/weekly-status")
+@log_error("CHORES_WEEKLY_STATUS_ERROR")
+async def get_weekly_status(
+    request: Request,
+    member_id: int,
+    db: AsyncSession = Depends(get_chores_db)
+) -> WeeklyPointsSummary:
+    """Get current weekly point status for a member with warnings."""
+    try:
+        service = ChoresService(db)
+
+        # Get current week's points
+        from datetime import date
+        week_start = service._get_week_start(date.today())
+        weekly_points = await service._get_weekly_points(member_id, week_start)
+
+        current_points = weekly_points.points_capped if weekly_points else 0
+        max_points = 30
+        points_remaining = max(0, max_points - current_points)
+
+        return WeeklyPointsSummary(
+            current_week_points=current_points,
+            max_weekly_points=max_points,
+            points_remaining=points_remaining,
+            is_at_cap=current_points >= max_points
+        )
+    except Exception as e:
+        logger.error(f"Error getting weekly status for member {member_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get weekly status")

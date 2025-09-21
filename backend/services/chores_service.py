@@ -22,7 +22,7 @@ from sqlalchemy.orm import selectinload
 
 from ..core.chore_errors import (ChoreErrorCode, create_chore_error,
                                  create_frequency_restriction_error,
-                                 create_point_cap_error)
+                                 create_point_cap_error, create_point_cap_warning)
 from ..core.events import sse_manager
 from ..core.exceptions import (DatabaseException, NotFoundException,
                                ValidationException)
@@ -410,12 +410,26 @@ class ChoresService:
                 next_available_str = chore.next_available_at.strftime("%I:%M %p tomorrow")
                 raise create_frequency_restriction_error(chore.name, next_available_str)
 
-            # Check weekly point cap
+            # Check weekly point cap and warnings
             week_start = self._get_week_start(date.today())
             weekly_points = await self._get_weekly_points(member_id, week_start)
+            current_points = weekly_points.points_capped if weekly_points else 0
 
             if weekly_points and weekly_points.points_capped >= 30:
                 raise create_point_cap_error(weekly_points.points_capped, 30)
+
+            # Check if we should show a warning (20+ points approaching 30)
+            warning_info = None
+            if current_points >= 20 and (current_points + chore.points) < 30:
+                warning_info = {
+                    "type": "approaching_cap",
+                    "current_points": current_points,
+                    "chore_points": chore.points,
+                    "new_total": current_points + chore.points,
+                    "points_remaining": 30 - (current_points + chore.points),
+                    "message": f"⚠️ Almost There!\nYou'll have {current_points + chore.points} points after this chore. Only {30 - (current_points + chore.points)} points until you reach your weekly goal!",
+                    "encouragement": "Keep going! You're doing great!"
+                }
             
             # Create completion record
             completion = ChoreCompletion(
@@ -440,7 +454,7 @@ class ChoresService:
 
             # Broadcast chore completion event
             member = await self.get_household_member(member_id)
-            await sse_manager.broadcast_to_parent(chore.parent_id, "chore_completed", {
+            event_data = {
                 "type": "chore_completed",
                 "completion_id": completion.id,
                 "chore_id": chore.id,
@@ -450,7 +464,19 @@ class ChoresService:
                 "points_earned": chore.points,
                 "status": completion.status.value,
                 "room_name": chore.room.name if chore.room else None
-            })
+            }
+
+            # Add warning info to event if present
+            if warning_info:
+                event_data["warning"] = warning_info
+
+            await sse_manager.broadcast_to_parent(chore.parent_id, "chore_completed", event_data)
+
+            # Store warning info on completion object for API response
+            if warning_info:
+                completion._warning_info = warning_info
+                completion._current_weekly_points = current_points + chore.points
+                completion._weekly_points_remaining = 30 - (current_points + chore.points)
 
             return completion
         except ValidationException:

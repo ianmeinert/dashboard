@@ -212,6 +212,11 @@ class ChoreCompletionResponse(ChoreCompletionBase):
     member_name: Optional[str] = Field(None, description="Name of the member")
     chore_name: Optional[str] = Field(None, description="Name of the chore")
 
+    # Point cap warning fields
+    weekly_points_warning: Optional[dict] = Field(None, description="Warning info when approaching point cap")
+    current_weekly_points: Optional[int] = Field(None, description="Current week points earned")
+    weekly_points_remaining: Optional[int] = Field(None, description="Points remaining to reach cap")
+
     class Config:
         from_attributes = True
 
