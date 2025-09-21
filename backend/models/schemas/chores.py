@@ -198,6 +198,12 @@ class ChoreCompletionConfirm(BaseModel):
     confirmed: bool = Field(..., description="True to confirm, False to reject")
 
 
+class ChoreCompletionBatchConfirm(BaseModel):
+    """Schema for batch confirming/rejecting chore completions."""
+    completion_ids: List[int] = Field(..., min_items=1, description="List of completion IDs to confirm/reject")
+    confirmed: bool = Field(..., description="True to confirm all, False to reject all")
+
+
 class ChoreCompletionResponse(ChoreCompletionBase):
     """Schema for chore completion response."""
     id: int
@@ -219,6 +225,15 @@ class ChoreCompletionResponse(ChoreCompletionBase):
 
     class Config:
         from_attributes = True
+
+
+class ChoreCompletionBatchResponse(BaseModel):
+    """Schema for batch chore completion response."""
+    processed_count: int = Field(..., description="Number of completions processed")
+    successful_count: int = Field(..., description="Number of successful confirmations")
+    failed_count: int = Field(..., description="Number of failed confirmations")
+    results: List[ChoreCompletionResponse] = Field(..., description="List of processed completions")
+    errors: List[dict] = Field(default=[], description="List of errors for failed completions")
 
 
 class WeeklyPointsResponse(BaseModel):

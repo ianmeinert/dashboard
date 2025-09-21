@@ -536,6 +536,67 @@ class ChoresService:
             await self.db.rollback()
             raise DatabaseException(f"Failed to confirm chore completion: {str(e)}", operation="update")
 
+    async def batch_confirm_chore_completions(self, completion_ids: List[int], parent_id: int, confirmed: bool = True) -> dict:
+        """Batch confirm or reject multiple chore completions by parent."""
+        results = []
+        errors = []
+        successful_count = 0
+        failed_count = 0
+
+        for completion_id in completion_ids:
+            try:
+                completion = await self.confirm_chore_completion(completion_id, parent_id, confirmed)
+
+                # Convert to response format
+                chore = await self.get_chore(completion.chore_id)
+                member = await self.get_household_member(completion.member_id)
+
+                completion_response = {
+                    "id": completion.id,
+                    "chore_id": completion.chore_id,
+                    "member_id": completion.member_id,
+                    "parent_id": completion.parent_id,
+                    "status": completion.status,
+                    "points_earned": completion.points_earned,
+                    "completed_at": completion.completed_at,
+                    "confirmed_at": completion.confirmed_at,
+                    "week_start": completion.week_start,
+                    "created_at": completion.created_at,
+                    "member_name": member.name if member else None,
+                    "chore_name": chore.name if chore else None
+                }
+
+                results.append(completion_response)
+                successful_count += 1
+
+            except Exception as e:
+                error_info = {
+                    "completion_id": completion_id,
+                    "error": str(e),
+                    "error_type": type(e).__name__
+                }
+                errors.append(error_info)
+                failed_count += 1
+
+        # Broadcast batch confirmation event
+        if successful_count > 0:
+            await sse_manager.broadcast_to_parent(parent_id, "batch_chore_confirmed", {
+                "type": "batch_chore_confirmed",
+                "processed_count": len(completion_ids),
+                "successful_count": successful_count,
+                "failed_count": failed_count,
+                "confirmed": confirmed,
+                "completion_ids": completion_ids
+            })
+
+        return {
+            "processed_count": len(completion_ids),
+            "successful_count": successful_count,
+            "failed_count": failed_count,
+            "results": results,
+            "errors": errors
+        }
+
     async def get_pending_completions(self, parent_id: int) -> List[ChoreCompletion]:
         """Get all pending chore completions for a parent."""
         try:

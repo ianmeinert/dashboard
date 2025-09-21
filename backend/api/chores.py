@@ -19,6 +19,8 @@ from ..core.exceptions import (DatabaseException, NotFoundException,
                                ValidationException)
 from ..database_chores import get_chores_db
 from ..models.schemas.chores import (AllowanceCalculationResponse,
+                                     ChoreCompletionBatchConfirm,
+                                     ChoreCompletionBatchResponse,
                                      ChoreCompletionConfirm,
                                      ChoreCompletionCreate,
                                      ChoreCompletionResponse, ChoreCreate,
@@ -588,6 +590,51 @@ async def complete_chore(
         raise HTTPException(status_code=500, detail="Failed to complete chore")
 
 
+@chores_router.post("/completions/batch-confirm", response_model=ChoreCompletionBatchResponse)
+@monitor_performance("/api/chores/completions/batch-confirm")
+@log_error("CHORES_BATCH_COMPLETION_CONFIRM_ERROR")
+async def batch_confirm_chore_completions(
+    request: Request,
+    parent_id: int,
+    batch_data: ChoreCompletionBatchConfirm,
+    db: AsyncSession = Depends(get_chores_db)
+) -> ChoreCompletionBatchResponse:
+    """Batch confirm or reject multiple chore completions by parent."""
+    try:
+        service = ChoresService(db)
+        result = await service.batch_confirm_chore_completions(
+            batch_data.completion_ids,
+            parent_id,
+            batch_data.confirmed
+        )
+
+        # Convert results to response format
+        completion_responses = []
+        for completion_data in result["results"]:
+            completion_responses.append(ChoreCompletionResponse(**completion_data))
+
+        return ChoreCompletionBatchResponse(
+            processed_count=result["processed_count"],
+            successful_count=result["successful_count"],
+            failed_count=result["failed_count"],
+            results=completion_responses,
+            errors=result["errors"]
+        )
+
+    except ChoreValidationException as e:
+        return JSONResponse(
+            status_code=e.status_code,
+            content={
+                "error": e.error_code,
+                "message": e.user_message,
+                "details": e.details
+            }
+        )
+    except DatabaseException as e:
+        logger.error(f"Database error in batch confirmation: {e}")
+        raise HTTPException(status_code=500, detail="Failed to batch confirm completions")
+
+
 @chores_router.post("/completions/{completion_id}/confirm", response_model=ChoreCompletionResponse)
 @monitor_performance("/api/chores/completions/{completion_id}/confirm")
 @log_error("CHORES_COMPLETION_CONFIRM_ERROR")
@@ -669,6 +716,7 @@ async def get_pending_completions(
     except DatabaseException as e:
         logger.error(f"Database error getting pending completions: {e}")
         raise HTTPException(status_code=500, detail="Failed to get pending completions")
+
 
 
 # Dashboard Endpoints
