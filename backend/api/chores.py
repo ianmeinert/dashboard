@@ -26,8 +26,8 @@ from ..models.schemas.chores import (AllowanceCalculationResponse,
                                      ChoreCompletionResponse, ChoreCreate,
                                      ChoreDashboardResponse,
                                      ChoreErrorResponse, ChoreResponse,
-                                     ChoreSuccessResponse, ChoreUpdate,
-                                     HouseholdMemberCreate,
+                                     ChoreStatusEnum, ChoreSuccessResponse,
+                                     ChoreUpdate, HouseholdMemberCreate,
                                      HouseholdMemberResponse,
                                      MemberSelectionResponse, ParentCreate,
                                      ParentDashboardResponse, ParentResponse,
@@ -437,13 +437,37 @@ async def create_chore(
 async def get_chores(
     request: Request,
     parent_id: int,
-    room_id: Optional[int] = None,
+    room_id: Optional[int] = Query(None, description="Filter by room ID"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status (true/false)"),
+    frequency: Optional[str] = Query(None, description="Filter by frequency (DAILY, WEEKLY, MONTHLY)"),
+    sort_by: Optional[str] = Query(None, description="Sort by: points, difficulty, name, created_at, next_available_at"),
+    sort_order: Optional[str] = Query("asc", description="Sort order: asc, desc"),
     db: AsyncSession = Depends(get_chores_db)
 ) -> List[ChoreResponse]:
-    """Get all chores for a parent, optionally filtered by room."""
+    """Get all chores for a parent with optional filtering and sorting by room, status, frequency, points, and dates."""
     try:
         service = ChoresService(db)
-        chores = await service.get_chores(parent_id, room_id)
+
+        # Validate frequency if provided
+        if frequency:
+            from ..models.schemas.chores import ChoreFrequencyEnum
+            try:
+                frequency_enum = ChoreFrequencyEnum(frequency.upper())
+                frequency = frequency_enum.value
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid frequency: {frequency}. Must be one of: DAILY, WEEKLY, MONTHLY"
+                )
+
+        chores = await service.get_chores(
+            parent_id=parent_id,
+            room_id=room_id,
+            is_active=is_active,
+            frequency=frequency,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
         
         return [
             ChoreResponse(
@@ -590,6 +614,80 @@ async def complete_chore(
         raise HTTPException(status_code=500, detail="Failed to complete chore")
 
 
+@chores_router.get("/completions", response_model=List[ChoreCompletionResponse])
+@monitor_performance("/api/chores/completions")
+@log_error("CHORES_COMPLETIONS_GET_ERROR")
+async def get_completions(
+    request: Request,
+    parent_id: int,
+    member_id: Optional[int] = Query(None, description="Filter by household member ID"),
+    status: Optional[str] = Query(None, description="Filter by completion status (PENDING, COMPLETED, REJECTED)"),
+    room_id: Optional[int] = Query(None, description="Filter by room ID"),
+    sort_by: Optional[str] = Query(None, description="Sort by: points, created_at, confirmed_at, completion_date"),
+    sort_order: Optional[str] = Query("desc", description="Sort order: asc, desc"),
+    db: AsyncSession = Depends(get_chores_db)
+) -> List[ChoreCompletionResponse]:
+    """Get chore completions with optional filtering and sorting by member, status, room, points, and dates."""
+    try:
+        service = ChoresService(db)
+
+        # Convert string status to enum if provided
+        status_enum = None
+        if status:
+            try:
+                status_enum = ChoreStatusEnum(status.upper())
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid status: {status}. Must be one of: PENDING, COMPLETED, REJECTED, DISABLED"
+                )
+
+        completions = await service.get_completions(
+            parent_id=parent_id,
+            member_id=member_id,
+            status=status_enum,
+            room_id=room_id,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+
+        response_list = []
+        for completion in completions:
+            # Get related data for response
+            chore = await service.get_chore(completion.chore_id)
+            member = await service.get_household_member(completion.member_id)
+
+            response_list.append(ChoreCompletionResponse(
+                id=completion.id,
+                chore_id=completion.chore_id,
+                member_id=completion.member_id,
+                parent_id=completion.parent_id,
+                status=completion.status,
+                points_earned=completion.points_earned,
+                completed_at=completion.completed_at,
+                confirmed_at=completion.confirmed_at,
+                week_start=completion.week_start,
+                created_at=completion.created_at,
+                member_name=member.name if member else None,
+                chore_name=chore.name if chore else None
+            ))
+
+        return response_list
+
+    except ChoreValidationException as e:
+        return JSONResponse(
+            status_code=e.status_code,
+            content={
+                "error": e.error_code,
+                "message": e.user_message,
+                "details": e.details
+            }
+        )
+    except DatabaseException as e:
+        logger.error(f"Database error getting completions: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get completions")
+
+
 @chores_router.post("/completions/batch-confirm", response_model=ChoreCompletionBatchResponse)
 @monitor_performance("/api/chores/completions/batch-confirm")
 @log_error("CHORES_BATCH_COMPLETION_CONFIRM_ERROR")
@@ -635,6 +733,39 @@ async def batch_confirm_chore_completions(
         raise HTTPException(status_code=500, detail="Failed to batch confirm completions")
 
 
+@chores_router.get("/completions/pending", response_model=List[ChoreCompletionResponse])
+@monitor_performance("/api/chores/completions/pending")
+@log_error("CHORES_PENDING_COMPLETIONS_GET_ERROR")
+async def get_pending_completions(
+    request: Request,
+    parent_id: int,
+    db: AsyncSession = Depends(get_chores_db)
+) -> List[ChoreCompletionResponse]:
+    """Get all pending chore completions for a parent."""
+    try:
+        service = ChoresService(db)
+        completions = await service.get_pending_completions(parent_id)
+
+        return [
+            ChoreCompletionResponse(
+                id=completion.id,
+                chore_id=completion.chore_id,
+                member_id=completion.member_id,
+                parent_id=completion.parent_id,
+                status=completion.status,
+                points_earned=completion.points_earned,
+                completed_at=completion.completed_at,
+                confirmed_at=completion.confirmed_at,
+                week_start=completion.week_start,
+                created_at=completion.created_at
+            )
+            for completion in completions
+        ]
+    except DatabaseException as e:
+        logger.error(f"Database error getting pending completions: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get pending completions")
+
+
 @chores_router.post("/completions/{completion_id}/confirm", response_model=ChoreCompletionResponse)
 @monitor_performance("/api/chores/completions/{completion_id}/confirm")
 @log_error("CHORES_COMPLETION_CONFIRM_ERROR")
@@ -653,7 +784,7 @@ async def confirm_chore_completion(
             parent_id,
             confirmation_data.confirmed
         )
-        
+
         return ChoreCompletionResponse(
             id=completion.id,
             chore_id=completion.chore_id,
@@ -683,39 +814,6 @@ async def confirm_chore_completion(
     except DatabaseException as e:
         logger.error(f"Database error confirming completion: {e}")
         raise HTTPException(status_code=500, detail="Failed to confirm completion")
-
-
-@chores_router.get("/completions/pending", response_model=List[ChoreCompletionResponse])
-@monitor_performance("/api/chores/completions/pending")
-@log_error("CHORES_PENDING_COMPLETIONS_GET_ERROR")
-async def get_pending_completions(
-    request: Request,
-    parent_id: int,
-    db: AsyncSession = Depends(get_chores_db)
-) -> List[ChoreCompletionResponse]:
-    """Get all pending chore completions for a parent."""
-    try:
-        service = ChoresService(db)
-        completions = await service.get_pending_completions(parent_id)
-        
-        return [
-            ChoreCompletionResponse(
-                id=completion.id,
-                chore_id=completion.chore_id,
-                member_id=completion.member_id,
-                parent_id=completion.parent_id,
-                status=completion.status,
-                points_earned=completion.points_earned,
-                completed_at=completion.completed_at,
-                confirmed_at=completion.confirmed_at,
-                week_start=completion.week_start,
-                created_at=completion.created_at
-            )
-            for completion in completions
-        ]
-    except DatabaseException as e:
-        logger.error(f"Database error getting pending completions: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get pending completions")
 
 
 

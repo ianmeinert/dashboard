@@ -313,18 +313,49 @@ class ChoresService:
             await self.db.rollback()
             raise DatabaseException(f"Failed to create chore: {str(e)}", operation="insert")
 
-    async def get_chores(self, parent_id: int, room_id: Optional[int] = None) -> List[Chore]:
-        """Get all chores for a parent, optionally filtered by room."""
+    async def get_chores(
+        self,
+        parent_id: int,
+        room_id: Optional[int] = None,
+        is_active: Optional[bool] = None,
+        frequency: Optional[str] = None,
+        sort_by: Optional[str] = None,
+        sort_order: Optional[str] = "asc"
+    ) -> List[Chore]:
+        """Get all chores for a parent with optional filtering and sorting."""
         try:
-            query = select(Chore).where(
-                and_(Chore.parent_id == parent_id, Chore.is_active == True)
-            )
-            
+            query = select(Chore).where(Chore.parent_id == parent_id)
+
+            if is_active is not None:
+                query = query.where(Chore.is_active == is_active)
+            else:
+                # Default to active chores only if not specified
+                query = query.where(Chore.is_active == True)
+
             if room_id:
                 query = query.where(Chore.room_id == room_id)
-                
-            query = query.order_by(asc(Chore.name))
-            
+
+            if frequency:
+                query = query.where(Chore.frequency == frequency)
+
+            # Apply sorting
+            sort_column = Chore.name  # Default sort
+            if sort_by == "points":
+                sort_column = Chore.points
+            elif sort_by == "name":
+                sort_column = Chore.name
+            elif sort_by == "created_at":
+                sort_column = Chore.created_at
+            elif sort_by == "next_available_at":
+                sort_column = Chore.next_available_at
+            elif sort_by == "difficulty":
+                sort_column = Chore.points  # Points represent difficulty
+
+            if sort_order == "desc":
+                query = query.order_by(desc(sort_column))
+            else:
+                query = query.order_by(asc(sort_column))
+
             result = await self.db.execute(query)
             return result.scalars().all()
         except Exception as e:
@@ -612,6 +643,53 @@ class ChoresService:
             return result.scalars().all()
         except Exception as e:
             raise DatabaseException(f"Failed to get pending completions: {str(e)}", operation="select")
+
+    async def get_completions(
+        self,
+        parent_id: int,
+        member_id: Optional[int] = None,
+        status: Optional[ChoreStatusEnum] = None,
+        room_id: Optional[int] = None,
+        sort_by: Optional[str] = None,
+        sort_order: Optional[str] = "desc"
+    ) -> List[ChoreCompletion]:
+        """Get chore completions with filtering and sorting options."""
+        try:
+            query = (
+                select(ChoreCompletion)
+                .join(Chore, ChoreCompletion.chore_id == Chore.id)
+                .where(Chore.parent_id == parent_id)
+            )
+
+            if member_id:
+                query = query.where(ChoreCompletion.member_id == member_id)
+
+            if status:
+                query = query.where(ChoreCompletion.status == status)
+
+            if room_id:
+                query = query.where(Chore.room_id == room_id)
+
+            # Apply sorting
+            sort_column = ChoreCompletion.created_at  # Default sort
+            if sort_by == "points":
+                sort_column = ChoreCompletion.points_earned
+            elif sort_by == "created_at":
+                sort_column = ChoreCompletion.created_at
+            elif sort_by == "confirmed_at":
+                sort_column = ChoreCompletion.confirmed_at
+            elif sort_by == "completion_date":
+                sort_column = ChoreCompletion.created_at
+
+            if sort_order == "desc":
+                query = query.order_by(desc(sort_column))
+            else:
+                query = query.order_by(asc(sort_column))
+
+            result = await self.db.execute(query)
+            return result.scalars().all()
+        except Exception as e:
+            raise DatabaseException(f"Failed to get completions: {str(e)}", operation="select")
 
     # Weekly Points and Allowance Management
     async def get_weekly_points(self, member_id: int, week_start: Optional[date] = None) -> Optional[WeeklyPoints]:
