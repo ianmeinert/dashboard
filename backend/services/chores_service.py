@@ -20,6 +20,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
+from ..core.chore_errors import (ChoreErrorCode, create_chore_error,
+                                 create_frequency_restriction_error,
+                                 create_point_cap_error)
 from ..core.events import sse_manager
 from ..core.exceptions import (DatabaseException, NotFoundException,
                                ValidationException)
@@ -389,23 +392,30 @@ class ChoresService:
             # Get chore and member
             chore = await self.get_chore(chore_id)
             member = await self.get_household_member(member_id)
-            
-            if not chore or not member:
-                raise ValidationException("Chore or member not found")
-            
+
+            if not chore:
+                raise create_chore_error(ChoreErrorCode.CHORE_NOT_FOUND)
+
+            if not member:
+                raise create_chore_error(ChoreErrorCode.MEMBER_NOT_FOUND)
+
+            if not member.is_active:
+                raise create_chore_error(ChoreErrorCode.MEMBER_INACTIVE)
+
             if not chore.is_active:
-                raise ValidationException("Chore is not active")
-            
+                raise create_chore_error(ChoreErrorCode.CHORE_DISABLED)
+
             # Check if chore is available (not disabled due to frequency)
             if chore.next_available_at and chore.next_available_at > datetime.utcnow():
-                raise ValidationException("Chore is not available yet due to frequency restrictions")
-            
+                next_available_str = chore.next_available_at.strftime("%I:%M %p tomorrow")
+                raise create_frequency_restriction_error(chore.name, next_available_str)
+
             # Check weekly point cap
             week_start = self._get_week_start(date.today())
             weekly_points = await self._get_weekly_points(member_id, week_start)
-            
+
             if weekly_points and weekly_points.points_capped >= 30:
-                raise ValidationException("Weekly point cap reached (30 points)")
+                raise create_point_cap_error(weekly_points.points_capped, 30)
             
             # Create completion record
             completion = ChoreCompletion(
@@ -463,12 +473,12 @@ class ChoresService:
             completion = result.scalar_one_or_none()
             
             if not completion:
-                raise ValidationException("Pending completion not found")
-            
+                raise create_chore_error(ChoreErrorCode.PENDING_COMPLETION_NOT_FOUND)
+
             # Verify parent has access to this completion
             chore = await self.get_chore(completion.chore_id)
             if not chore or chore.parent_id != parent_id:
-                raise ValidationException("Access denied")
+                raise create_chore_error(ChoreErrorCode.PARENT_ACCESS_DENIED)
             
             # Update completion status based on parent decision
             if confirmed:

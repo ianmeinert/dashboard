@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..core.chore_errors import ChoreValidationException
 from ..core.events import sse_manager
 from ..core.exceptions import (DatabaseException, NotFoundException,
                                ValidationException)
@@ -558,20 +559,21 @@ async def complete_chore(
             week_start=completion.week_start,
             created_at=completion.created_at
         )
+    except ChoreValidationException as e:
+        raise HTTPException(
+            status_code=e.status_code,
+            detail={
+                "error": "chore_validation_error",
+                "message": e.message,
+                "error_code": e.error_code,
+                "user_message": e.user_message,
+                "details": e.details
+            }
+        )
     except ValidationException as e:
-        error_msg = str(e)
-        # Provide more specific error responses for better UX
-        if "point cap reached" in error_msg.lower():
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "message": error_msg,
-                    "error_code": "WEEKLY_POINT_CAP_EXCEEDED",
-                    "type": "validation_error"
-                }
-            )
-        else:
-            raise HTTPException(status_code=400, detail=error_msg)
+        # Fallback for any remaining generic validation errors
+        logger.info(f"COMPLETE_CHORE: Caught ValidationException: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
     except DatabaseException as e:
         logger.error(f"Database error completing chore: {e}")
         raise HTTPException(status_code=500, detail="Failed to complete chore")
@@ -608,7 +610,19 @@ async def confirm_chore_completion(
             week_start=completion.week_start,
             created_at=completion.created_at
         )
+    except ChoreValidationException as e:
+        raise HTTPException(
+            status_code=e.status_code,
+            detail={
+                "error": "chore_validation_error",
+                "message": e.message,
+                "error_code": e.error_code,
+                "user_message": e.user_message,
+                "details": e.details
+            }
+        )
     except ValidationException as e:
+        # Fallback for any remaining generic validation errors
         raise HTTPException(status_code=400, detail=str(e))
     except DatabaseException as e:
         logger.error(f"Database error confirming completion: {e}")
