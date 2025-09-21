@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
+from ..core.events import sse_manager
 from ..core.exceptions import (DatabaseException, NotFoundException,
                                ValidationException)
 from ..models.chores import (AllowanceCalculation, Chore, ChoreCompletion,
@@ -426,7 +427,21 @@ class ChoresService:
             
             # Update weekly points
             await self._update_weekly_points(member_id, week_start, chore.points)
-            
+
+            # Broadcast chore completion event
+            member = await self.get_household_member(member_id)
+            await sse_manager.broadcast_to_parent(chore.parent_id, "chore_completed", {
+                "type": "chore_completed",
+                "completion_id": completion.id,
+                "chore_id": chore.id,
+                "chore_name": chore.name,
+                "member_id": member_id,
+                "member_name": member.name if member else "Unknown",
+                "points_earned": chore.points,
+                "status": completion.status.value,
+                "room_name": chore.room.name if chore.room else None
+            })
+
             return completion
         except ValidationException:
             await self.db.rollback()
@@ -464,7 +479,22 @@ class ChoresService:
             
             await self.db.commit()
             await self.db.refresh(completion)
-            
+
+            # Broadcast chore confirmation event
+            member = await self.get_household_member(completion.member_id)
+            await sse_manager.broadcast_to_parent(parent_id, "chore_confirmed", {
+                "type": "chore_confirmed",
+                "completion_id": completion.id,
+                "chore_id": chore.id,
+                "chore_name": chore.name,
+                "member_id": completion.member_id,
+                "member_name": member.name if member else "Unknown",
+                "status": completion.status.value,
+                "confirmed": confirmed,
+                "points_earned": completion.points_earned if confirmed else 0,
+                "room_name": chore.room.name if chore.room else None
+            })
+
             return completion
         except Exception as e:
             await self.db.rollback()

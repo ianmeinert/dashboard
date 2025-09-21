@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..core.events import sse_manager
 from ..core.exceptions import (DatabaseException, NotFoundException,
                                ValidationException)
 from ..database_chores import get_chores_db
@@ -786,3 +787,23 @@ async def calculate_allowance(
     except DatabaseException as e:
         logger.error(f"Database error calculating allowance: {e}")
         raise HTTPException(status_code=500, detail="Failed to calculate allowance")
+
+
+# Server-Sent Events Endpoints
+
+@chores_router.get("/events/stream")
+@monitor_performance("/api/chores/events/stream")
+async def chore_events_stream(
+    request: Request,
+    parent_id: Optional[int] = Query(None, description="Parent ID to filter events")
+):
+    """
+    Server-Sent Events stream for real-time chore updates.
+
+    Events include:
+    - chore_completed: When a chore is completed by a member
+    - chore_confirmed: When a parent confirms/rejects a completion
+    - points_updated: When weekly points change
+    - chore_available: When a chore becomes available again
+    """
+    return await sse_manager.connect(request, parent_id)
