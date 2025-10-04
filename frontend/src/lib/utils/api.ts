@@ -158,7 +158,7 @@ export async function apiRequest<T = any>(
           errorData = {};
         }
 
-        // Handle structured error responses from chores service
+        // Handle structured error responses
         if (errorData.error && errorData.message) {
           // Structured error response from our custom error handling
           const error = new Error(errorData.message);
@@ -258,11 +258,4 @@ export const serviceApi = {
     get: (endpoint: string = '') => api.get(`/api/monitoring${endpoint}`),
   },
 
-  chores: {
-    get: (endpoint: string = '', options?: RequestOptions) => api.get(`/api/chores${endpoint}`, options),
-    post: (endpoint: string = '', data?: any, options?: RequestOptions) => api.post(`/api/chores${endpoint}`, data, options),
-    put: (endpoint: string = '', data?: any, options?: RequestOptions) => api.put(`/api/chores${endpoint}`, data, options),
-    patch: (endpoint: string = '', data?: any, options?: RequestOptions) => api.patch(`/api/chores${endpoint}`, data, options),
-    delete: (endpoint: string = '') => api.delete(`/api/chores${endpoint}`),
-  },
 }; 

@@ -36,6 +36,8 @@ module.exports = {
     'grid', 'grid-cols-7', 'gap-1', 'text-center', 'font-semibold', 'select-none',
     'max-w-2xl', 'mx-auto', 'mt-8', 'dark:bg-gray-900', 'dark:text-white', 'rounded-lg',
     'text-2xl', 'font-bold', 'px-4', 'py-2', 'bg-gray-200', 'dark:bg-gray-800', 'dark:text-white', 'rounded-lg', 'shadow', 'active:bg-gray-300', 'dark:active:bg-gray-700', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-400',
+    // Scrollbar and overflow classes
+    'overflow-y-auto', 'overflow-x-hidden', 'max-h-32', 'max-h-96', 'space-y-2', 'space-y-3',
   ],
   theme: {
     extend: {},
