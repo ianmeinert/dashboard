@@ -129,6 +129,13 @@ export interface HouseholdMemberCreate {
   is_parent?: boolean;
 }
 
+export interface HouseholdMemberUpdate {
+  name?: string;
+  date_of_birth?: string;
+  is_parent?: boolean;
+  is_active?: boolean;
+}
+
 export interface RoomCreate {
   name: string;
   description?: string;
@@ -158,12 +165,32 @@ export interface ChoreUpdate {
   is_active?: boolean;
 }
 
+export interface ChoreCompletionBatchConfirm {
+  completion_ids: number[];
+  confirmed: boolean;
+}
+
+export interface ChoreCompletionBatchResponse {
+  processed_count: number;
+  successful_count: number;
+  failed_count: number;
+  results: ChoreCompletion[];
+  errors: any[];
+}
+
+export interface WeeklyPointsSummary {
+  current_week_points: number;
+  max_weekly_points: number;
+  points_remaining: number;
+  is_at_cap: boolean;
+}
+
 // Store state
 interface ChoresStore {
   // Authentication
   currentParent: Parent | null;
   isAuthenticated: boolean;
-  
+
   // Data
   rooms: Room[];
   chores: Chore[];
@@ -172,15 +199,19 @@ interface ChoresStore {
   pendingCompletions: ChoreCompletion[];
   weeklyPoints: WeeklyPoints[];
   allowanceCalculations: AllowanceCalculation[];
-  
+
   // UI state
   loading: boolean;
   error: string | null;
   selectedRoomId: number | null;
-  
+
   // Dashboard data
   dashboard: ChoreDashboard | null;
   parentDashboard: ParentDashboard | null;
+
+  // SSE connection
+  sseConnection: EventSource | null;
+  isConnected: boolean;
 }
 
 // Create the base store
@@ -198,7 +229,9 @@ const { subscribe, set, update } = writable<ChoresStore>({
   error: null,
   selectedRoomId: null,
   dashboard: null,
-  parentDashboard: null
+  parentDashboard: null,
+  sseConnection: null,
+  isConnected: false
 });
 
 // Store methods
@@ -284,6 +317,14 @@ export const choresStore = {
   },
 
   logout(): void {
+    // Close SSE connection before clearing state
+    update(state => {
+      if (state.sseConnection) {
+        state.sseConnection.close();
+      }
+      return state;
+    });
+
     set({
       currentParent: null,
       isAuthenticated: false,
@@ -298,33 +339,234 @@ export const choresStore = {
       error: null,
       selectedRoomId: null,
       dashboard: null,
-      parentDashboard: null
+      parentDashboard: null,
+      sseConnection: null,
+      isConnected: false
     });
+  },
+
+  // SSE Real-time Updates
+  connectToEventStream(parentId: number): void {
+    // Close existing connection if any
+    update(state => {
+      if (state.sseConnection) {
+        state.sseConnection.close();
+      }
+      return state;
+    });
+
+    try {
+      const eventSource = new EventSource(`http://localhost:8000/api/chores/events/stream?parent_id=${parentId}`);
+
+      eventSource.onopen = () => {
+        console.log('SSE connection opened');
+        update(state => ({ ...state, isConnected: true, error: null }));
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('SSE event received:', data);
+          this.handleSSEEvent(data);
+        } catch (error) {
+          console.error('Failed to parse SSE event data:', error);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('SSE connection error:', error);
+        update(state => ({
+          ...state,
+          isConnected: false,
+          error: 'Real-time connection lost. Please refresh the page if data seems outdated.'
+        }));
+      };
+
+      // Store the connection
+      update(state => ({ ...state, sseConnection: eventSource }));
+
+    } catch (error) {
+      console.error('Failed to establish SSE connection:', error);
+      update(state => ({
+        ...state,
+        error: 'Failed to establish real-time connection',
+        isConnected: false
+      }));
+    }
+  },
+
+  disconnectFromEventStream(): void {
+    update(state => {
+      if (state.sseConnection) {
+        state.sseConnection.close();
+      }
+      return {
+        ...state,
+        sseConnection: null,
+        isConnected: false
+      };
+    });
+  },
+
+  handleSSEEvent(eventData: any): void {
+    const { event_type, data } = eventData;
+
+    switch (event_type) {
+      case 'chore_completed':
+        this.handleChoreCompletedEvent(data);
+        break;
+      case 'completion_confirmed':
+        this.handleCompletionConfirmedEvent(data);
+        break;
+      case 'completion_rejected':
+        this.handleCompletionRejectedEvent(data);
+        break;
+      case 'chore_created':
+        this.handleChoreCreatedEvent(data);
+        break;
+      case 'chore_updated':
+        this.handleChoreUpdatedEvent(data);
+        break;
+      case 'room_created':
+        this.handleRoomCreatedEvent(data);
+        break;
+      case 'room_updated':
+        this.handleRoomUpdatedEvent(data);
+        break;
+      case 'member_created':
+        this.handleMemberCreatedEvent(data);
+        break;
+      case 'member_updated':
+        this.handleMemberUpdatedEvent(data);
+        break;
+      default:
+        console.log('Unknown SSE event type:', event_type);
+    }
+  },
+
+  handleChoreCompletedEvent(data: any): void {
+    const completion: ChoreCompletion = data.completion;
+    update(state => ({
+      ...state,
+      pendingCompletions: [...state.pendingCompletions, completion]
+    }));
+  },
+
+  handleCompletionConfirmedEvent(data: any): void {
+    const completionId = data.completion_id;
+    update(state => ({
+      ...state,
+      pendingCompletions: state.pendingCompletions.filter(c => c.id !== completionId)
+    }));
+  },
+
+  handleCompletionRejectedEvent(data: any): void {
+    const completionId = data.completion_id;
+    update(state => ({
+      ...state,
+      pendingCompletions: state.pendingCompletions.filter(c => c.id !== completionId)
+    }));
+  },
+
+  handleChoreCreatedEvent(data: any): void {
+    const chore: Chore = data.chore;
+    update(state => ({
+      ...state,
+      chores: [...state.chores, chore]
+    }));
+  },
+
+  handleChoreUpdatedEvent(data: any): void {
+    const chore: Chore = data.chore;
+    update(state => ({
+      ...state,
+      chores: state.chores.map(c => c.id === chore.id ? chore : c)
+    }));
+  },
+
+  handleRoomCreatedEvent(data: any): void {
+    const room: Room = data.room;
+    update(state => ({
+      ...state,
+      rooms: [...state.rooms, room]
+    }));
+  },
+
+  handleRoomUpdatedEvent(data: any): void {
+    const room: Room = data.room;
+    update(state => ({
+      ...state,
+      rooms: state.rooms.map(r => r.id === room.id ? room : r)
+    }));
+  },
+
+  handleMemberCreatedEvent(data: any): void {
+    const member: HouseholdMember = data.member;
+    update(state => ({
+      ...state,
+      householdMembers: [...state.householdMembers, member]
+    }));
+  },
+
+  handleMemberUpdatedEvent(data: any): void {
+    const member: HouseholdMember = data.member;
+    update(state => ({
+      ...state,
+      householdMembers: state.householdMembers.map(m => m.id === member.id ? member : m),
+      currentMember: state.currentMember?.id === member.id ? member : state.currentMember
+    }));
   },
 
   // Household Members
   async createHouseholdMember(memberData: HouseholdMemberCreate, parentId: number): Promise<HouseholdMember> {
     update(state => ({ ...state, loading: true, error: null }));
-    
+
     try {
       const response = await serviceApi.chores.post('/members', memberData, {
         params: { parent_id: parentId }
       });
       const member: HouseholdMember = response.data;
-      
+
       update(state => ({
         ...state,
         householdMembers: [...state.householdMembers, member],
         loading: false,
         error: null
       }));
-      
+
       return member;
     } catch (error) {
       update(state => ({
         ...state,
         loading: false,
         error: error instanceof Error ? error.message : 'Failed to create household member'
+      }));
+      throw error;
+    }
+  },
+
+  async updateHouseholdMember(memberId: number, memberData: HouseholdMemberUpdate): Promise<HouseholdMember> {
+    update(state => ({ ...state, loading: true, error: null }));
+
+    try {
+      const response = await serviceApi.chores.put(`/members/${memberId}`, memberData);
+      const member: HouseholdMember = response.data;
+
+      update(state => ({
+        ...state,
+        householdMembers: state.householdMembers.map(m => m.id === memberId ? member : m),
+        // Update current member if it's the one being updated
+        currentMember: state.currentMember?.id === memberId ? member : state.currentMember,
+        loading: false,
+        error: null
+      }));
+
+      return member;
+    } catch (error) {
+      update(state => ({
+        ...state,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Failed to update household member'
       }));
       throw error;
     }
@@ -356,11 +598,11 @@ export const choresStore = {
 
   async loadAllHouseholdMembers(): Promise<void> {
     update(state => ({ ...state, loading: true, error: null }));
-    
+
     try {
       const response = await serviceApi.chores.get('/members/all');
       const members: HouseholdMember[] = response.data;
-      
+
       update(state => ({
         ...state,
         householdMembers: members,
@@ -373,6 +615,30 @@ export const choresStore = {
         loading: false,
         error: error instanceof Error ? error.message : 'Failed to load household members'
       }));
+    }
+  },
+
+  async getMember(memberId: number): Promise<HouseholdMember> {
+    update(state => ({ ...state, loading: true, error: null }));
+
+    try {
+      const response = await serviceApi.chores.get(`/members/${memberId}`);
+      const member: HouseholdMember = response.data;
+
+      update(state => ({
+        ...state,
+        loading: false,
+        error: null
+      }));
+
+      return member;
+    } catch (error) {
+      update(state => ({
+        ...state,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Failed to get household member'
+      }));
+      throw error;
     }
   },
 
@@ -640,13 +906,13 @@ export const choresStore = {
 
   async loadPendingCompletions(parentId: number): Promise<void> {
     update(state => ({ ...state, loading: true, error: null }));
-    
+
     try {
       const response = await serviceApi.chores.get('/completions/pending', {
         params: { parent_id: parentId }
       });
       const completions: ChoreCompletion[] = response.data;
-      
+
       update(state => ({
         ...state,
         pendingCompletions: completions,
@@ -659,6 +925,79 @@ export const choresStore = {
         loading: false,
         error: error instanceof Error ? error.message : 'Failed to load pending completions'
       }));
+    }
+  },
+
+  async getCompletions(
+    parentId: number,
+    filters?: {
+      memberId?: number;
+      status?: string;
+      roomId?: number;
+      sortBy?: string;
+      sortOrder?: string;
+    }
+  ): Promise<ChoreCompletion[]> {
+    update(state => ({ ...state, loading: true, error: null }));
+
+    try {
+      const params: any = { parent_id: parentId };
+      if (filters?.memberId) params.member_id = filters.memberId;
+      if (filters?.status) params.status = filters.status;
+      if (filters?.roomId) params.room_id = filters.roomId;
+      if (filters?.sortBy) params.sort_by = filters.sortBy;
+      if (filters?.sortOrder) params.sort_order = filters.sortOrder;
+
+      const response = await serviceApi.chores.get('/completions', { params });
+      const completions: ChoreCompletion[] = response.data;
+
+      update(state => ({
+        ...state,
+        loading: false,
+        error: null
+      }));
+
+      return completions;
+    } catch (error) {
+      update(state => ({
+        ...state,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Failed to load completions'
+      }));
+      throw error;
+    }
+  },
+
+  async batchConfirmCompletions(
+    batchData: ChoreCompletionBatchConfirm,
+    parentId: number
+  ): Promise<ChoreCompletionBatchResponse> {
+    update(state => ({ ...state, loading: true, error: null }));
+
+    try {
+      const response = await serviceApi.chores.post('/completions/batch-confirm', batchData, {
+        params: { parent_id: parentId }
+      });
+      const batchResponse: ChoreCompletionBatchResponse = response.data;
+
+      // Update pending completions by removing confirmed/rejected ones
+      update(state => ({
+        ...state,
+        pendingCompletions: state.pendingCompletions.filter(
+          completion => !batchData.completion_ids.includes(completion.id)
+        ),
+        loading: false,
+        error: null
+      }));
+
+      return batchResponse;
+    } catch (error) {
+      update(state => ({
+        ...state,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Failed to batch confirm completions'
+      }));
+      throw error;
     }
   },
 
@@ -719,6 +1058,30 @@ export const choresStore = {
     }
   },
 
+  async getWeeklyStatus(memberId: number): Promise<WeeklyPointsSummary> {
+    update(state => ({ ...state, loading: true, error: null }));
+
+    try {
+      const response = await serviceApi.chores.get(`/members/${memberId}/weekly-status`);
+      const weeklyStatus: WeeklyPointsSummary = response.data;
+
+      update(state => ({
+        ...state,
+        loading: false,
+        error: null
+      }));
+
+      return weeklyStatus;
+    } catch (error) {
+      update(state => ({
+        ...state,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Failed to get weekly status'
+      }));
+      throw error;
+    }
+  },
+
   // Utility methods
   clearError(): void {
     update(state => ({ ...state, error: null }));
@@ -727,7 +1090,7 @@ export const choresStore = {
   // Initialize data for a parent
   async initializeParentData(parentId: number): Promise<void> {
     update(state => ({ ...state, loading: true, error: null }));
-    
+
     try {
       await Promise.all([
         this.loadHouseholdMembers(parentId),
@@ -735,7 +1098,10 @@ export const choresStore = {
         this.loadChores(parentId),
         this.loadPendingCompletions(parentId)
       ]);
-      
+
+      // Establish SSE connection for real-time updates
+      this.connectToEventStream(parentId);
+
       update(state => ({ ...state, loading: false, error: null }));
     } catch (error) {
       update(state => ({
@@ -761,6 +1127,7 @@ export const loading = derived(choresStore, ($store) => $store.loading);
 export const error = derived(choresStore, ($store) => $store.error);
 export const selectedRoomId = derived(choresStore, ($store) => $store.selectedRoomId);
 export const dashboard = derived(choresStore, ($store) => $store.dashboard);
+export const isConnected = derived(choresStore, ($store) => $store.isConnected);
 
 // Derived stores for filtered data
 export const choresByRoom = derived(

@@ -9,6 +9,7 @@
     calendarName: string;
     description: string;
     location: string;
+    color_class?: string;
   }
 </script>
 
@@ -113,7 +114,6 @@
 
   function getEventColorClass(event: CalendarEvent): string {
     const color = calendarColors[event.calendarId] || "bg-gray-200 text-gray-700";
-    console.log(`Getting color for event ${event.summary} (calendar: ${event.calendarId}): ${color}`);
     return color;
   }
 
@@ -225,10 +225,23 @@
         {isAllDay}
         {isMultiDay}
         {getEventColorClass}
-        formatTime={(dateStr) => new Date(dateStr).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+        formatTime={(dateStr) => {
+          // Only show time for datetime formats, not date-only
+          if (dateStr.length > 10) {
+            return new Date(dateStr).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+          }
+          return '';
+        }}
         formatDate={(dateStr) => {
-          const [year, month, day] = dateStr.split('-').map(Number);
-          return new Date(year, month - 1, day).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+          // Handle both date-only ("2025-01-01") and datetime formats
+          if (dateStr.length === 10) {
+            // Date-only format
+            const [year, month, day] = dateStr.split('-').map(Number);
+            return new Date(year, month - 1, day).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+          } else {
+            // Datetime format
+            return new Date(dateStr).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+          }
         }}
         linkify={(text) => text ? text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">$1</a>') : ''}
         on:close={closeDayView}
@@ -243,17 +256,36 @@
         {isAllDay}
         {isMultiDay}
         formatDate={(dateStr) => {
-          const [year, month, day] = dateStr.split('-').map(Number);
-          return new Date(year, month - 1, day).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+          // Handle both date-only ("2025-01-01") and datetime formats
+          if (dateStr.length === 10) {
+            // Date-only format
+            const [year, month, day] = dateStr.split('-').map(Number);
+            return new Date(year, month - 1, day).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+          } else {
+            // Datetime format
+            return new Date(dateStr).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+          }
         }}
-        formatTime={(dateStr) => new Date(dateStr).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+        formatTime={(dateStr) => {
+          // Only show time for datetime formats, not date-only
+          if (dateStr.length > 10) {
+            return new Date(dateStr).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+          }
+          return '';
+        }}
         {getEventColorClass}
         linkify={(text) => text ? text.replace(/(https?:\/\/[^\s]+)/g, '<a href=\"$1\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-blue-600 underline\">$1</a>') : ''}
         showCloseButton={true}
         dayEvents={selectedEvent ? eventsForCell({
-          day: new Date(selectedEvent.start).getDate(),
-          month: new Date(selectedEvent.start).getMonth(),
-          year: new Date(selectedEvent.start).getFullYear(),
+          day: selectedEvent.start.length === 10 ?
+            parseInt(selectedEvent.start.split('-')[2]) :
+            new Date(selectedEvent.start).getDate(),
+          month: selectedEvent.start.length === 10 ?
+            parseInt(selectedEvent.start.split('-')[1]) - 1 :
+            new Date(selectedEvent.start).getMonth(),
+          year: selectedEvent.start.length === 10 ?
+            parseInt(selectedEvent.start.split('-')[0]) :
+            new Date(selectedEvent.start).getFullYear(),
           isCurrent: true
         }) : []}
       />

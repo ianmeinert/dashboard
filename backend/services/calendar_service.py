@@ -39,6 +39,15 @@ COLOR_ID_MAP = {
     '9': 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-400',
     '10': 'bg-green-100 text-green-800 hover:bg-green-200 border-green-400',
     '11': 'bg-red-100 text-red-800 hover:bg-red-200 border-red-400',
+    '12': 'bg-yellow-300 text-yellow-900 hover:bg-yellow-400 border-yellow-600',
+    '13': 'bg-purple-300 text-purple-900 hover:bg-purple-400 border-purple-600',
+    '14': 'bg-purple-300 text-purple-900 hover:bg-purple-400 border-purple-600',
+    '15': 'bg-blue-300 text-blue-900 hover:bg-blue-400 border-blue-600',
+    '16': 'bg-purple-300 text-purple-900 hover:bg-purple-400 border-purple-600',
+    '17': 'bg-purple-300 text-purple-900 hover:bg-purple-400 border-purple-600',
+    '18': 'bg-purple-300 text-purple-900 hover:bg-purple-400 border-purple-600',
+    '19': 'bg-orange-300 text-orange-900 hover:bg-orange-400 border-orange-600',
+    '20': 'bg-gray-300 text-gray-900 hover:bg-gray-400 border-gray-600',
 }
 
 def get_color_class_from_id(color_id: str) -> str:

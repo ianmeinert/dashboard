@@ -6,7 +6,7 @@
 -->
 
 <script lang="ts">
-  import { chores, choresStore, error, householdMembers, loading, pendingCompletions, rooms, type Chore, type ChoreCompletion, type HouseholdMember, type Room } from '$lib/stores/chores.js';
+  import { chores, choresStore, error, householdMembers, isConnected, loading, pendingCompletions, rooms, type Chore, type ChoreCompletion, type HouseholdMember, type Room } from '$lib/stores/chores.js';
   import { onMount } from 'svelte';
   import ChoreManagement from './ChoreManagement.svelte';
   import MemberManagement from './MemberManagement.svelte';
@@ -32,6 +32,7 @@
   $: pendingList = $pendingCompletions;
   $: isLoading = $loading;
   $: errorMessage = $error;
+  $: connectionStatus = $isConnected;
 
   onMount(() => {
     // Load all parent data
@@ -76,6 +77,16 @@
     }
   }
 
+  function handleBatchCompletionApproved(completionIds: number[], confirmed: boolean) {
+    const parent = $choresStore.currentParent;
+    if (parent && completionIds.length > 0) {
+      choresStore.batchConfirmCompletions(
+        { completion_ids: completionIds, confirmed },
+        parent.id
+      );
+    }
+  }
+
   function getTabClass(tab: string): string {
     const baseClass = "px-4 py-2 text-sm font-medium rounded-lg transition-colors";
     const activeClass = "bg-blue-100 text-blue-700";
@@ -94,7 +105,16 @@
   <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
     <div>
       <h2 class="text-2xl font-bold text-gray-900">Parent Dashboard</h2>
-      <p class="text-sm text-gray-600">Manage your family's chore system</p>
+      <div class="flex items-center space-x-4">
+        <p class="text-sm text-gray-600">Manage your family's chore system</p>
+        <!-- Connection Status -->
+        <div class="flex items-center space-x-1 text-xs">
+          <div class="w-2 h-2 rounded-full {connectionStatus ? 'bg-green-400' : 'bg-red-400'}"></div>
+          <span class="text-gray-500">
+            {connectionStatus ? 'Live' : 'Offline'}
+          </span>
+        </div>
+      </div>
     </div>
     <button
       on:click={onClose}
@@ -181,6 +201,7 @@
         <PendingApprovals
           completions={pendingList}
           onApproved={handleCompletionApproved}
+          onBatchApproved={handleBatchCompletionApproved}
         />
       {:else if activeTab === 'members'}
         <MemberManagement

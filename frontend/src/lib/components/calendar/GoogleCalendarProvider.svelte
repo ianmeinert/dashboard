@@ -12,10 +12,10 @@ let loading = true;
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth();
 
-// Cache keys
-const CACHE_KEY = 'calendar_month_events';
-const COLORS_CACHE_KEY = 'calendar_colors';
-const CACHE_EXPIRY_KEY = 'calendar_cache_expiry';
+// Cache keys (v4 to force cache refresh after color updates)
+const CACHE_KEY = 'calendar_month_events_v4';
+const COLORS_CACHE_KEY = 'calendar_colors_v4';
+const CACHE_EXPIRY_KEY = 'calendar_cache_expiry_v4';
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 let cacheExpiry: number | null = null;
@@ -98,15 +98,11 @@ const fallbackColorPalette = [
 
 function assignFallbackColors() {
   const calendarIds = Array.from(new Set(events.map(e => e.calendarId)));
-  console.log('Calendar IDs:', calendarIds);
-  console.log('Current calendarColors:', calendarColors);
   calendarIds.forEach((id: string, idx: number) => {
     if (!calendarColors[id]) {
       calendarColors[id] = fallbackColorPalette[idx % fallbackColorPalette.length];
-      console.log(`Assigning fallback color for calendar ${id}: ${calendarColors[id]}`);
     }
   });
-  console.log('Final calendarColors:', calendarColors);
 }
 
 async function fetchMonthEvents(year: number, month: number) {
@@ -148,7 +144,6 @@ function updateEventsForCurrentMonth() {
     }
     if (event.calendarId && event.color_class) {
       calendarColors[event.calendarId] = event.color_class;
-      console.log(`Setting color for calendar ${event.calendarId}: ${event.color_class}`);
     }
   }
   // Assign fallback colors for calendars without color_class
@@ -267,11 +262,4 @@ onDestroy(() => {
   }}
 />
 
-<!-- Debug info -->
-{#if events.length > 0}
-  <div class="mt-4 p-2 bg-gray-100 text-xs">
-    <div>Events: {events.length}</div>
-    <div>Calendar Colors: {JSON.stringify(calendarColors)}</div>
-    <div>Calendar Names: {JSON.stringify(calendarNames)}</div>
-  </div>
-{/if} 
+ 

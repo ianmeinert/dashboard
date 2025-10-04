@@ -18,6 +18,7 @@ export interface ApiError {
   message: string;
   status?: number;
   details?: any;
+  errorCode?: string;
 }
 
 export interface RequestOptions extends RequestInit {
@@ -155,6 +156,15 @@ export async function apiRequest<T = any>(
           errorData = await parseJsonResponse(response);
         } catch {
           errorData = {};
+        }
+
+        // Handle structured error responses from chores service
+        if (errorData.error && errorData.message) {
+          // Structured error response from our custom error handling
+          const error = new Error(errorData.message);
+          (error as any).errorCode = errorData.error;
+          (error as any).details = errorData.details;
+          throw error;
         }
 
         // Handle FastAPI validation errors
