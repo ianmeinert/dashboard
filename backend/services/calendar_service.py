@@ -15,7 +15,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
-from ..models.schemas.calendar import CalendarEvent
+from ..schemas.calendar import CalendarEvent
 from .sync_token_db import get_sync_token, set_sync_token
 
 logger = logging.getLogger(__name__)

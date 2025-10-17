@@ -16,7 +16,7 @@ from ..core.exceptions import (DatabaseException, ExternalAPIException,
                                ValidationException)
 from ..core.metrics import record_external_api_request, record_weather_request
 from ..database import get_db
-from ..models.schemas.weather import (WeatherSettingsCreate,
+from ..schemas.weather import (WeatherSettingsCreate,
                                       WeatherSettingsResponse)
 from ..models.weather import WeatherSettings
 from ..services.http_client import weather_client

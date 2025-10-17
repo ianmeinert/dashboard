@@ -22,8 +22,8 @@ from ..core.exceptions import (DatabaseException, NotFoundException,
                                ValidationException)
 from ..database import get_db
 from ..models.grocery import GroceryItem
-from ..models.schemas.grocery import GroceryItem as GroceryItemSchema
-from ..models.schemas.grocery import (GroceryItemCreate, GroceryItemResponse,
+from ..schemas.grocery import GroceryItem as GroceryItemSchema
+from ..schemas.grocery import (GroceryItemCreate, GroceryItemResponse,
                                       GroceryItemUpdate, GroceryListResponse)
 from ..services.security import validate_file_path
 

@@ -11,7 +11,7 @@ from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from ..models.schemas.calendar import CalendarEvent
+from ..schemas.calendar import CalendarEvent
 from ..services.calendar_service import get_upcoming_events
 from ..services.monitoring_service import log_error, monitor_performance
 
