@@ -30,7 +30,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
-from .api import calendar, grocery, monitoring, weather
+from .api import calendar, grocery, monitoring, weather, chores
 from .core.config import settings
 from .core.exceptions import (DashboardException, handle_dashboard_exception,
                               handle_database_error, handle_generic_exception,
@@ -256,6 +256,11 @@ app.include_router(
     prefix="/api/grocery", 
     tags=["grocery"]
 )
+app.include_router(
+    chores.chores_router, 
+    prefix="/api/chores", 
+    tags=["chores"]
+)
 
 # Setup Prometheus metrics instrumentator
 if settings.debug or settings.metrics_enabled:
@@ -294,6 +299,7 @@ async def root():
         "status": "operational",
         "endpoints": {
             "calendar": "/api/calendar",
+            "chores": "/api/chores",
             "monitoring": "/api/monitoring",
             "weather": "/api/weather",
             "grocery": "/api/grocery",

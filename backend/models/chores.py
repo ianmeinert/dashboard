@@ -109,9 +109,9 @@ class Chore(Base):
     
     # Recurrence
     is_recurring = Column(Boolean, default=False)
-    recurrence_pattern = Column(Enum(RecurrencePattern), default=RecurrencePattern.NONE)
-    recurrence_interval = Column(Integer, default=1)  # e.g., every 2 weeks
-    next_occurrence = Column(Date, nullable=True)  # When this recurs next
+    recurrence_type = Column(Enum(RecurrencePattern), default=RecurrencePattern.NONE)
+    recurrence_interval = Column(Integer, default=1)
+    next_due_date = Column(Date, nullable=True)
     
     # Completion tracking
     completed_at = Column(DateTime, nullable=True)
@@ -140,16 +140,16 @@ class ChoreCompletion(Base):
     completed_by_id = Column(Integer, ForeignKey("family_members.id"), nullable=False)
     
     # Snapshot data (in case chore is modified later)
-    chore_title = Column(String(200), nullable=False)
+    chore_title_snapshot = Column(String(200), nullable=False)
     points_earned = Column(Integer, nullable=False)
     
     # Completion details
     completed_at = Column(DateTime, default=datetime.utcnow)
-    notes = Column(Text, nullable=True)
-    verification_photo_url = Column(String(500), nullable=True)  # Future: photo verification
+    completion_notes = Column(Text, nullable=True)  # Changed from notes
+    photo_url = Column(String(500), nullable=True)
     
     # Time tracking (optional)
-    time_spent_minutes = Column(Integer, nullable=True)
+    actual_minutes = Column(Integer, nullable=True)
     
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -190,3 +190,4 @@ class MonthlyPointsArchive(Base):
 
     # Relationships
     family_member = relationship("FamilyMember")
+    

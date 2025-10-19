@@ -56,9 +56,12 @@ class AgeGroupBase(BaseModel):
     default_weekly_cap: int = Field(..., ge=0, description="Default weekly points cap")
 
 
-class AgeGroupCreate(AgeGroupBase):
+class AgeGroupCreate(BaseModel):
     """Schema for creating an age group"""
-    pass
+    name: str = Field(..., max_length=50, description="Age group name")
+    min_age: int = Field(..., ge=0, le=100, description="Minimum age")
+    max_age: int = Field(..., ge=0, le=100, description="Maximum age")
+    default_weekly_cap: int = Field(..., ge=0, description="Default weekly points cap")
 
 
 class AgeGroupUpdate(BaseModel):
@@ -90,9 +93,12 @@ class FamilyMemberBase(BaseModel):
     is_active: bool = Field(True, description="Is member active")
 
 
-class FamilyMemberCreate(FamilyMemberBase):
+class FamilyMemberCreate(BaseModel):
     """Schema for creating a family member"""
-    pass
+    name: str = Field(..., max_length=100, description="Family member name")
+    age: Optional[int] = Field(None, ge=0, le=100, description="Age")
+    age_group_id: Optional[int] = Field(None, description="Age group ID")
+    is_active: bool = Field(True, description="Is member active")
 
 
 class FamilyMemberUpdate(BaseModel):
@@ -116,6 +122,14 @@ class FamilyMemberResponse(FamilyMemberBase):
     created_at: datetime
     updated_at: datetime
     age_group: Optional[AgeGroupResponse] = None
+
+    model_config = ConfigDict(from_attributes=True)
+    
+class FamilyMemberPointsResponse(FamilyMemberResponse):
+    """Extended response with calculated points fields for dashboards"""
+    age_group_name: str  # Calculated from age_group.name
+    weekly_points_remaining: int  # Calculated: cap - weekly_points
+    weekly_progress_percent: float  # Calculated: (weekly_points / cap) * 100
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -143,17 +157,24 @@ class ChoreBase(BaseModel):
     category: ChoreCategory = Field(ChoreCategory.OTHER, description="Chore category")
     priority: ChorePriority = Field(ChorePriority.MEDIUM, description="Chore priority")
     due_date: Optional[date] = Field(None, description="Due date")
-    is_recurring: bool = Field(False, description="Is this a recurring chore")
-    recurrence_pattern: RecurrencePattern = Field(RecurrencePattern.NONE)
-    recurrence_interval: int = Field(1, ge=1, description="Recurrence interval")
     notes: Optional[str] = Field(None, description="Additional notes")
     estimated_minutes: Optional[int] = Field(None, ge=0, description="Estimated time")
 
 
-class ChoreCreate(ChoreBase):
+class ChoreCreate(BaseModel):
     """Schema for creating a chore"""
+    title: str = Field(..., max_length=200, description="Chore title")
+    description: Optional[str] = Field(None, description="Chore description")
+    points: int = Field(1, ge=1, le=10, description="Points for completion")
+    category: ChoreCategory = Field(ChoreCategory.OTHER, description="Chore category")
+    priority: Optional[ChorePriority] = Field(ChorePriority.MEDIUM, description="Chore priority")
     assigned_to_id: Optional[int] = Field(None, description="Assigned family member ID")
     created_by_id: int = Field(..., description="Creator family member ID")
+    due_date: Optional[date] = Field(None, description="Due date")
+    recurrence_type: Optional[RecurrencePattern] = Field(None, description="Recurrence pattern")
+    recurrence_interval: Optional[int] = Field(None, ge=1, description="Recurrence interval")
+    notes: Optional[str] = Field(None, description="Additional notes")
+    estimated_minutes: Optional[int] = Field(None, ge=0, description="Estimated time")
 
 
 class ChoreUpdate(BaseModel):
@@ -165,30 +186,34 @@ class ChoreUpdate(BaseModel):
     priority: Optional[ChorePriority] = None
     assigned_to_id: Optional[int] = None
     due_date: Optional[date] = None
-    is_recurring: Optional[bool] = None
-    recurrence_pattern: Optional[RecurrencePattern] = None
+    recurrence_type: Optional[RecurrencePattern] = None
     recurrence_interval: Optional[int] = Field(None, ge=1)
     notes: Optional[str] = None
     estimated_minutes: Optional[int] = Field(None, ge=0)
     status: Optional[ChoreStatus] = None
 
 
-class ChoreResponse(ChoreBase):
+class ChoreResponse(BaseModel):
     """Schema for chore response"""
     id: int
-    assigned_to_id: Optional[int]
-    created_by_id: int
+    title: str
+    description: Optional[str] = None
+    points: int
+    category: ChoreCategory
+    priority: ChorePriority
     status: ChoreStatus
-    next_occurrence: Optional[date]
-    completed_at: Optional[datetime]
-    completed_by_id: Optional[int]
-    is_archived: bool
+    recurrence_type: Optional[RecurrencePattern] = None
+    recurrence_interval: Optional[int] = None
+    assigned_to_id: Optional[int] = None
+    assigned_to_name: Optional[str] = None
+    created_by_id: int
+    created_by_name: str = "Unknown"
+    estimated_minutes: Optional[int] = None
+    due_date: Optional[date] = None
+    next_due_date: Optional[date] = None
+    notes: Optional[str] = None
     created_at: datetime
     updated_at: datetime
-    
-    # Nested relationships (optional)
-    assigned_to: Optional["FamilyMemberResponse"] = None
-    created_by: Optional["FamilyMemberResponse"] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -209,9 +234,9 @@ class ChoreCompletionCreate(BaseModel):
     """Schema for completing a chore"""
     chore_id: int = Field(..., description="Chore ID")
     completed_by_id: int = Field(..., description="Family member ID")
-    notes: Optional[str] = Field(None, description="Completion notes")
-    time_spent_minutes: Optional[int] = Field(None, ge=0, description="Time spent")
-    verification_photo_url: Optional[str] = Field(None, max_length=500)
+    completion_notes: Optional[str] = Field(None, description="Completion notes")
+    actual_minutes: Optional[int] = Field(None, ge=0, description="Time spent")
+    photo_url: Optional[str] = Field(None, max_length=500)
 
 
 class ChoreCompletionResponse(BaseModel):
@@ -219,15 +244,13 @@ class ChoreCompletionResponse(BaseModel):
     id: int
     chore_id: int
     completed_by_id: int
-    chore_title: str
+    completed_by_name: str = "Unknown"
+    chore_title_snapshot: str
     points_earned: int
     completed_at: datetime
-    notes: Optional[str]
-    time_spent_minutes: Optional[int]
-    verification_photo_url: Optional[str]
-    created_at: datetime
-    
-    completed_by: Optional[FamilyMemberResponse] = None
+    completion_notes: Optional[str] = None
+    actual_minutes: Optional[int] = None
+    photo_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
