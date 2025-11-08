@@ -238,43 +238,6 @@
         </div>
       </div>
 
-      <!-- Row 2: Assign To, Created By -->
-      <div class="grid grid-cols-2 gap-4">
-        <!-- Assign To -->
-        <div>
-          <label for="assigned-to" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Assign To
-          </label>
-          <select
-            id="assigned-to"
-            bind:value={assignedToId}
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          >
-            <option value={undefined}>Unassigned</option>
-            {#each $members as member (member.id)}
-              <option value={member.id}>{member.name}</option>
-            {/each}
-          </select>
-        </div>
-
-        <!-- Created By -->
-        <div>
-          <label for="created-by" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Created By <span class="text-red-500">*</span>
-          </label>
-          <select
-            id="created-by"
-            bind:value={createdById}
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          >
-            {#each $members as member (member.id)}
-              <option value={member.id}>{member.name}</option>
-            {/each}
-          </select>
-        </div>
-      </div>
-
       <!-- Row 3: Due Date, Time Estimate -->
       <div class="grid grid-cols-2 gap-4">
         <!-- Due Date -->

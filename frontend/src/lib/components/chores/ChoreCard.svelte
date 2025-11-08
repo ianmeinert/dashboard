@@ -5,8 +5,8 @@
 -->
 
 <script lang="ts">
-  import { choresStore, members, categoryColors, priorityColors, categoryLabels, priorityLabels } from '$lib/stores/chores';
   import type { Chore } from '$lib/stores/chores';
+  import { categoryColors, categoryLabels, choresStore, priorityColors, priorityLabels } from '$lib/stores/chores';
   import CompleteChoreModal from './CompleteChoreModal.svelte';
 
   export let chore: Chore;
@@ -117,20 +117,7 @@
             🔁 {chore.recurrence_type}
           </span>
         {/if}
-      </div>
-
-      <!-- Assignment Info -->
-      <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-        {#if chore.assigned_to_name}
-          <span>
-            Assigned to: <span class="font-medium text-gray-700 dark:text-gray-300">{chore.assigned_to_name}</span>
-          </span>
-        {:else}
-          <span class="text-gray-400">Unassigned</span>
-        {/if}
-        <span>•</span>
-        <span>By: {chore.created_by_name}</span>
-      </div>
+      </div>      
     </div>
 
     <!-- Right: Actions -->

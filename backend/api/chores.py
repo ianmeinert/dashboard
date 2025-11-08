@@ -43,6 +43,76 @@ chores_router = APIRouter()
 # HELPER FUNCTIONS
 # ============================================================================
 
+async def check_and_auto_reset_weekly_points(db: AsyncSession):
+    """Check if weekly points need to be reset and do it automatically"""
+    try:
+        # Get all members
+        result = await db.execute(select(FamilyMember))
+        members = result.scalars().all()
+        
+        current_date = datetime.utcnow().date()
+        
+        # Calculate the most recent Monday (start of this week)
+        days_since_monday = current_date.weekday()  # Monday is 0
+        current_week_start = current_date - timedelta(days=days_since_monday)
+        
+        reset_needed = False
+        
+        for member in members:
+            # Check if member needs weekly reset
+            if not member.last_weekly_reset or member.last_weekly_reset < current_week_start:
+                reset_needed = True
+                
+                # Only archive if there are points to archive and a valid last reset date
+                if member.weekly_points > 0 and member.last_weekly_reset:
+                    # Calculate the week that just ended
+                    last_reset_monday = member.last_weekly_reset
+                    last_week_end = last_reset_monday + timedelta(days=6)  # Sunday
+                    
+                    # Count chores completed in that week
+                    week_completions = await db.scalar(
+                        select(func.count()).select_from(ChoreCompletion)
+                        .where(
+                            and_(
+                                ChoreCompletion.completed_by_id == member.id,
+                                ChoreCompletion.completed_at >= datetime.combine(last_reset_monday, datetime.min.time()),
+                                ChoreCompletion.completed_at <= datetime.combine(last_week_end, datetime.max.time())
+                            )
+                        )
+                    )
+                    
+                    # Archive the completed week
+                    archive = WeeklyPointsArchive(
+                        family_member_id=member.id,
+                        week_start_date=last_reset_monday,
+                        week_end_date=last_week_end,
+                        points_earned=member.weekly_points,
+                        weekly_cap=member.weekly_points_cap or 25,  # Use default if None
+                        chores_completed=week_completions,
+                        created_at=datetime.utcnow()
+                    )
+                    db.add(archive)
+                    
+                    logger.info(
+                        f"Archived week {last_reset_monday} to {last_week_end} for {member.name}: "
+                        f"{member.weekly_points} points, {week_completions} chores"
+                    )
+                
+                # Reset weekly points
+                member.weekly_points = 0
+                member.last_weekly_reset = current_week_start
+                
+                logger.info(f"Auto-reset weekly points for {member.name}")
+        
+        if reset_needed:
+            await db.commit()
+            logger.info("Automatic weekly reset completed")
+        
+    except Exception as e:
+        logger.error(f"Error in automatic weekly reset: {e}", exc_info=True)
+        await db.rollback()
+        # Don't raise exception - this is background maintenance
+        
 def check_weekly_cap(member: FamilyMember, points: int) -> bool:
     """Check if member can earn more points without exceeding weekly cap"""
     return (member.weekly_points + points) <= member.weekly_points_cap
@@ -319,15 +389,20 @@ async def get_family_members(
 ) -> List[FamilyMemberPointsResponse]:
     """
     Get all family members with their current points status.
+    Automatically resets weekly points if needed.
     """
     try:
+        # Check and perform automatic weekly reset first
+        await check_and_auto_reset_weekly_points(db)
+        
+        # Now get updated member data
         result = await db.execute(select(FamilyMember))
         members = result.scalars().all()
         
         responses = []
         for member in members:
-            weekly_remaining = member.weekly_points_cap - member.weekly_points
-            progress_percent = (member.weekly_points / member.weekly_points_cap * 100) if member.weekly_points_cap > 0 else 0
+            weekly_remaining = max(0, (member.weekly_points_cap or 25) - member.weekly_points)
+            progress_percent = (member.weekly_points / (member.weekly_points_cap or 25) * 100) if (member.weekly_points_cap or 25) > 0 else 0
             
             # Get age group name
             age_group_result = await db.execute(
@@ -344,7 +419,7 @@ async def get_family_members(
                 age_group_name=age_group.name if age_group else "Unknown",
                 total_points=member.total_points,
                 weekly_points=member.weekly_points,
-                weekly_points_cap=member.weekly_points_cap,
+                weekly_points_cap=member.weekly_points_cap or 25,
                 weekly_points_remaining=weekly_remaining,
                 weekly_progress_percent=round(progress_percent, 1),
                 monthly_points=member.monthly_points,
@@ -352,7 +427,7 @@ async def get_family_members(
                 last_monthly_reset=member.last_monthly_reset,
                 created_at=member.created_at,
                 updated_at=member.updated_at,
-                age_group=None  # Optional, can be included if needed
+                age_group=None
             )
             responses.append(response)
         
@@ -444,16 +519,20 @@ async def get_family_member(
 ) -> FamilyMemberPointsResponse:
     """
     Get a specific family member's points status.
+    Automatically resets weekly points if needed.
     """
     try:
+        # Check and perform automatic weekly reset first
+        await check_and_auto_reset_weekly_points(db)
+        
         result = await db.execute(select(FamilyMember).where(FamilyMember.id == member_id))
         member = result.scalar_one_or_none()
         
         if not member:
             raise NotFoundException("Family member", str(member_id))
         
-        weekly_remaining = member.weekly_points_cap - member.weekly_points
-        progress_percent = (member.weekly_points / member.weekly_points_cap * 100) if member.weekly_points_cap > 0 else 0
+        weekly_remaining = max(0, (member.weekly_points_cap or 25) - member.weekly_points)
+        progress_percent = (member.weekly_points / (member.weekly_points_cap or 25) * 100) if (member.weekly_points_cap or 25) > 0 else 0
         
         # Get age group name
         age_group_result = await db.execute(
@@ -470,7 +549,7 @@ async def get_family_member(
             age_group_name=age_group.name if age_group else "Unknown",
             total_points=member.total_points,
             weekly_points=member.weekly_points,
-            weekly_points_cap=member.weekly_points_cap,
+            weekly_points_cap=member.weekly_points_cap or 25,
             weekly_points_remaining=weekly_remaining,
             weekly_progress_percent=round(progress_percent, 1),
             monthly_points=member.monthly_points,
@@ -485,6 +564,161 @@ async def get_family_member(
         logger.error(f"Error getting family member {member_id}: {e}", exc_info=True)
         raise DatabaseException("Failed to retrieve family member", operation="select")
 
+@chores_router.get("/completions/summary")
+async def get_completion_summary(
+    request: Request,
+    member_id: Optional[int] = None,
+    weeks_back: int = 4,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get a summary of completion history for analysis.
+    Useful for checking if weekly resets are working properly.
+    """
+    try:
+        # Calculate date range
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(weeks=weeks_back)
+        
+        # Base query for completions in the time range
+        base_query = select(
+            ChoreCompletion.completed_by_id,
+            ChoreCompletion.points_earned,
+            ChoreCompletion.completed_at,
+            ChoreCompletion.chore_title_snapshot,
+            FamilyMember.name.label('member_name')
+        ).join(
+            FamilyMember, ChoreCompletion.completed_by_id == FamilyMember.id
+        ).where(
+            ChoreCompletion.completed_at >= start_date
+        )
+        
+        if member_id:
+            base_query = base_query.where(ChoreCompletion.completed_by_id == member_id)
+        
+        result = await db.execute(base_query.order_by(ChoreCompletion.completed_at.desc()))
+        completions = result.all()
+        
+        # Group by member and week
+        summary = {}
+        for completion in completions:
+            member_name = completion.member_name
+            completed_at = completion.completed_at
+            points = completion.points_earned
+            
+            # Calculate which week this completion belongs to
+            days_since_monday = completed_at.weekday()
+            week_start = (completed_at.date() - timedelta(days=days_since_monday))
+            week_key = f"{week_start.strftime('%Y-%m-%d')} (Week of {week_start.strftime('%b %d')})"
+            
+            if member_name not in summary:
+                summary[member_name] = {}
+            if week_key not in summary[member_name]:
+                summary[member_name][week_key] = {
+                    'total_points': 0,
+                    'chore_count': 0,
+                    'completions': []
+                }
+            
+            summary[member_name][week_key]['total_points'] += points
+            summary[member_name][week_key]['chore_count'] += 1
+            summary[member_name][week_key]['completions'].append({
+                'title': completion.chore_title_snapshot,
+                'points': points,
+                'completed_at': completed_at.strftime('%Y-%m-%d %H:%M')
+            })
+        
+        return {
+            'summary': summary,
+            'total_completions': len(completions),
+            'date_range': {
+                'start': start_date.strftime('%Y-%m-%d'),
+                'end': end_date.strftime('%Y-%m-%d'),
+                'weeks_included': weeks_back
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error getting completion summary: {e}", exc_info=True)
+        raise DatabaseException("Failed to retrieve completion summary", operation="select")
+
+
+@chores_router.get("/members/{member_id}/weekly-history")
+async def get_member_weekly_history(
+    request: Request,
+    member_id: int,
+    weeks_back: int = 8,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get weekly points history for a specific member from the archive.
+    """
+    try:
+        # Get member info
+        member_result = await db.execute(select(FamilyMember).where(FamilyMember.id == member_id))
+        member = member_result.scalar_one_or_none()
+        
+        if not member:
+            raise NotFoundException("Family member", str(member_id))
+        
+        # Get archived weekly data
+        archive_result = await db.execute(
+            select(WeeklyPointsArchive)
+            .where(WeeklyPointsArchive.family_member_id == member_id)
+            .order_by(WeeklyPointsArchive.week_start_date.desc())
+            .limit(weeks_back)
+        )
+        archived_weeks = archive_result.scalars().all()
+        
+        # Format response
+        history = []
+        for week in archived_weeks:
+            history.append({
+                'week_start': week.week_start_date.strftime('%Y-%m-%d'),
+                'week_end': week.week_end_date.strftime('%Y-%m-%d'),
+                'points_earned': week.points_earned,
+                'weekly_cap': week.weekly_cap,
+                'chores_completed': week.chores_completed,
+                'utilization_percent': round((week.points_earned / week.weekly_cap * 100), 1) if week.weekly_cap > 0 else 0
+            })
+        
+        # Add current week info
+        current_date = datetime.utcnow().date()
+        days_since_monday = current_date.weekday()
+        current_week_start = current_date - timedelta(days=days_since_monday)
+        
+        # Count current week completions
+        current_week_completions = await db.scalar(
+            select(func.count()).select_from(ChoreCompletion)
+            .where(
+                and_(
+                    ChoreCompletion.completed_by_id == member_id,
+                    ChoreCompletion.completed_at >= datetime.combine(current_week_start, datetime.min.time())
+                )
+            )
+        )
+        
+        current_week = {
+            'week_start': current_week_start.strftime('%Y-%m-%d'),
+            'week_end': (current_week_start + timedelta(days=6)).strftime('%Y-%m-%d'),
+            'points_earned': member.weekly_points,
+            'weekly_cap': member.weekly_points_cap or 25,
+            'chores_completed': current_week_completions,
+            'utilization_percent': round((member.weekly_points / (member.weekly_points_cap or 25) * 100), 1),
+            'is_current_week': True
+        }
+        
+        return {
+            'member_name': member.name,
+            'member_id': member_id,
+            'current_week': current_week,
+            'archived_weeks': history,
+            'last_reset_date': member.last_weekly_reset.strftime('%Y-%m-%d') if member.last_weekly_reset else None
+        }
+    except NotFoundException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting weekly history for member {member_id}: {e}", exc_info=True)
+        raise DatabaseException("Failed to retrieve weekly history", operation="select")
 
 @chores_router.put("/members/{member_id}", response_model=FamilyMemberPointsResponse)
 async def update_family_member(

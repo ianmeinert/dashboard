@@ -5,22 +5,19 @@
 -->
 
 <script lang="ts">
-  import { choresStore, chores, members, pendingChores, categoryColors, priorityColors, categoryLabels, priorityLabels } from '$lib/stores/chores';
-  import type { Chore, ChoreStatus } from '$lib/stores/chores';
-  import ChoreCard from './ChoreCard.svelte';
+  import { chores } from '$lib/stores/chores';
   import AddChoreModal from './AddChoreModal.svelte';
+  import ChoreCard from './ChoreCard.svelte';
 
   let showAddModal = false;
   let filterStatus: 'all' | 'completed' | 'upcoming' | 'past_due' | 'open_to_work' = 'all';
-  let filterMember: number | 'all' = 'all';
+
 
   // Get today's date for comparison
   $: today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
 
   // Filter chores based on selected filters
   $: filteredChores = $chores.filter(chore => {
-    // First apply member filter
-    if (filterMember !== 'all' && chore.assigned_to_id !== filterMember) return false;
     
     // Then apply status filter
     if (filterStatus === 'all') return true;
@@ -94,24 +91,7 @@
           <option value="past_due">Past Due</option>
           <option value="completed">Completed</option>
         </select>
-      </div>
-
-      <!-- Member Filter -->
-      <div class="flex items-center gap-2">
-        <label for="member-filter" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Member:
-        </label>
-        <select
-          id="member-filter"
-          bind:value={filterMember}
-          class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-        >
-          <option value="all">All</option>
-          {#each $members as member (member.id)}
-            <option value={member.id}>{member.name}</option>
-          {/each}
-        </select>
-      </div>
+      </div>      
     </div>
 
     <!-- Add Chore Button -->
