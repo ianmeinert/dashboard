@@ -78,6 +78,16 @@ function handleApiError(error: any, url: string): ApiError {
     };
   }
 
+  // If the error already has a status (like from our API error handling), preserve it
+  if (error && typeof error === 'object' && typeof error.status === 'number') {
+    return {
+      message: error.message || 'API error occurred',
+      status: error.status,
+      details: error.details,
+      errorCode: error.errorCode
+    };
+  }
+
   return {
     message: error.message || 'Unknown error occurred',
     status: 500,
@@ -114,6 +124,11 @@ async function retryRequest<T>(
       return await requestFn();
     } catch (error) {
       lastError = error;
+      
+      // Don't retry on client errors (4xx) - these are permanent failures
+      if (error && typeof error === 'object' && error.status >= 400 && error.status < 500) {
+        throw error;
+      }
       
       if (attempt === retries) {
         break;
@@ -164,20 +179,30 @@ export async function apiRequest<T = any>(
           const error = new Error(errorData.message);
           (error as any).errorCode = errorData.error;
           (error as any).details = errorData.details;
+          (error as any).detail = errorData.message; // Also set detail for consistency
+          (error as any).status = response.status;
           throw error;
         }
 
         // Handle FastAPI validation errors
         if (errorData.detail) {
           if (Array.isArray(errorData.detail)) {
-            throw new Error(
-              errorData.detail.map((d: any) => d.msg).join('; ')
-            );
+            const errorMessage = errorData.detail.map((d: any) => d.msg).join('; ');
+            const error = new Error(errorMessage);
+            (error as any).detail = errorMessage; // Preserve detail field
+            (error as any).status = response.status;
+            throw error;
           }
-          throw new Error(errorData.detail);
+          const error = new Error(errorData.detail);
+          (error as any).detail = errorData.detail; // Preserve detail field
+          (error as any).status = response.status;
+          throw error;
         }
 
-        throw response;
+        // Fallback for unknown error formats
+        const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
+        (error as any).status = response.status;
+        throw error;
       }
 
       const data = await parseJsonResponse(response);
@@ -256,6 +281,14 @@ export const serviceApi = {
 
   monitoring: {
     get: (endpoint: string = '') => api.get(`/api/monitoring${endpoint}`),
+  },
+
+  chores: {
+    get: (endpoint: string = '') => api.get(`/api/chores${endpoint}`),
+    post: (data: any, endpoint: string = '') => api.post(`/api/chores${endpoint}`, data),
+    put: (id: number, data: any) => api.put(`/api/chores/${id}`, data),
+    patch: (id: number, data: any) => api.patch(`/api/chores/${id}`, data),
+    delete: (endpoint: string) => api.delete(`/api/chores${endpoint}`),
   },
 
 }; 

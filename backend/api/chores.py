@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import or_, and_
 
 from ..core.exceptions import (DatabaseException, NotFoundException,
                                ValidationException)
@@ -47,12 +48,20 @@ def check_weekly_cap(member: FamilyMember, points: int) -> bool:
     return (member.weekly_points + points) <= member.weekly_points_cap
 
 
-def calculate_next_due_date(chore: Chore) -> Optional[datetime]:
-    """Calculate next due date based on recurrence"""
+def calculate_next_due_date(chore: Chore, from_date: Optional[datetime] = None) -> Optional[datetime]:
+    """Calculate next due date based on recurrence
+    
+    Args:
+        chore: The chore to calculate for
+        from_date: Optional date to calculate from (defaults to chore.due_date)
+    
+    Returns:
+        Next due date or None if not recurring
+    """
     if not chore.recurrence_type or not chore.recurrence_interval:
         return chore.due_date
     
-    base_date = chore.due_date or datetime.utcnow()
+    base_date = from_date if from_date else (chore.due_date or datetime.utcnow())
     
     if chore.recurrence_type == RecurrencePattern.DAILY:
         return base_date + timedelta(days=chore.recurrence_interval)
@@ -249,6 +258,7 @@ async def update_age_group(
         
         return AgeGroupResponse.model_validate(age_group)
     except (NotFoundException, ValidationException):
+        await db.rollback()
         raise
     except Exception as e:
         logger.error(f"Error updating age group {age_group_id}: {e}", exc_info=True)
@@ -291,6 +301,7 @@ async def delete_age_group(
             content={"message": f"Age group with ID {age_group_id} deleted successfully"}
         )
     except (NotFoundException, ValidationException):
+        await db.rollback()
         raise
     except Exception as e:
         logger.error(f"Error deleting age group {age_group_id}: {e}", exc_info=True)
@@ -668,9 +679,26 @@ async def complete_chore(
         if not member:
             raise NotFoundException("Family member", str(completion.completed_by_id))
         
+        # Prevent completing chores before their due date
+        now = datetime.utcnow()
+        if chore.due_date:
+            today = now.date()
+            if chore.due_date > today:
+                # Format the date properly
+                due_date_str = chore.due_date.strftime('%Y-%m-%d') if hasattr(chore.due_date, 'strftime') else str(chore.due_date)
+                logger.info(f"Chore completion blocked: chore {chore.id} not due until {due_date_str}")
+                # Explicitly rollback before raising exception
+                await db.rollback()
+                raise ValidationException(
+                    f"This chore is not due until {due_date_str}. "
+                    f"You can complete it on or after the due date."
+                )
+        
         # Check weekly cap
         if not check_weekly_cap(member, chore.points):
             remaining = member.weekly_points_cap - member.weekly_points
+            # Explicitly rollback before raising exception
+            await db.rollback()
             raise ValidationException(
                 f"Weekly points cap exceeded. Remaining: {remaining} points"
             )
@@ -697,12 +725,69 @@ async def complete_chore(
         
         # Update chore status
         chore.status = ChoreStatus.COMPLETED
+        chore.completed_at = now  # Set completion timestamp for Option B filtering
         
-        # Handle recurring chores
-        if chore.recurrence_type and chore.recurrence_interval:
-            chore.due_date = chore.next_due_date
-            chore.next_due_date = calculate_next_due_date(chore)
-            chore.status = ChoreStatus.PENDING  # Reset to pending for next occurrence
+        # Handle recurring chores (but not if recurrence type is "none")
+        if chore.recurrence_type and chore.recurrence_type != RecurrencePattern.NONE and chore.recurrence_interval:
+            # Archive the completed recurring chore (so it doesn't clutter the list)
+            chore.is_archived = True
+            
+            # Calculate next due date from today if past due, otherwise from original due date
+            today = now.date()
+            base_date = today if chore.due_date < today else chore.due_date
+            
+            # Calculate next occurrence
+            if chore.recurrence_type == RecurrencePattern.DAILY:
+                next_due = base_date + timedelta(days=chore.recurrence_interval)
+            elif chore.recurrence_type == RecurrencePattern.WEEKLY:
+                next_due = base_date + timedelta(weeks=chore.recurrence_interval)
+            elif chore.recurrence_type == RecurrencePattern.BIWEEKLY:
+                next_due = base_date + timedelta(weeks=2 * chore.recurrence_interval)
+            elif chore.recurrence_type == RecurrencePattern.MONTHLY:
+                month = base_date.month + chore.recurrence_interval
+                year = base_date.year
+                while month > 12:
+                    month -= 12
+                    year += 1
+                next_due = base_date.replace(year=year, month=month)
+            else:
+                next_due = base_date
+            
+            # Calculate the next occurrence after that
+            if chore.recurrence_type == RecurrencePattern.DAILY:
+                next_next_due = next_due + timedelta(days=chore.recurrence_interval)
+            elif chore.recurrence_type == RecurrencePattern.WEEKLY:
+                next_next_due = next_due + timedelta(weeks=chore.recurrence_interval)
+            elif chore.recurrence_type == RecurrencePattern.BIWEEKLY:
+                next_next_due = next_due + timedelta(weeks=2 * chore.recurrence_interval)
+            elif chore.recurrence_type == RecurrencePattern.MONTHLY:
+                month = next_due.month + chore.recurrence_interval
+                year = next_due.year
+                while month > 12:
+                    month -= 12
+                    year += 1
+                next_next_due = next_due.replace(year=year, month=month)
+            else:
+                next_next_due = next_due
+            
+            # Create new chore for next occurrence
+            new_chore = Chore(
+                title=chore.title,
+                description=chore.description,
+                points=chore.points,
+                category=chore.category,
+                priority=chore.priority,
+                assigned_to_id=chore.assigned_to_id,
+                created_by_id=chore.created_by_id,
+                status=ChoreStatus.PENDING,
+                due_date=next_due,
+                recurrence_type=chore.recurrence_type,
+                recurrence_interval=chore.recurrence_interval,
+                next_due_date=next_next_due,
+                notes=chore.notes,
+                estimated_minutes=chore.estimated_minutes
+            )
+            db.add(new_chore)
         
         await db.commit()
         await db.refresh(db_completion)
@@ -738,6 +823,9 @@ async def get_dashboard(
     Get dashboard summary with all key metrics.
     """
     try:
+        # Update overdue status before calculating metrics
+        from backend.services.chores import ChoreService
+        await ChoreService.update_overdue_status(db)
         # Get all members with their points
         members_result = await db.execute(select(FamilyMember))
         members = members_result.scalars().all()
@@ -764,11 +852,47 @@ async def get_dashboard(
                 "monthly_points": member.monthly_points,
             })
         
-        # Get chore counts
-        total_chores = await db.scalar(select(func.count()).select_from(Chore))
-        pending_chores = await db.scalar(
-            select(func.count()).select_from(Chore).where(Chore.status == ChoreStatus.PENDING)
+        # Get chore counts with new meaningful categories
+        today = datetime.utcnow().date()
+        
+        # Count all chores (non-archived)
+        total_chores = await db.scalar(
+            select(func.count()).select_from(Chore).where(Chore.is_archived == False)
         )
+        
+        # Count past due chores (overdue status)
+        past_due_chores = await db.scalar(
+            select(func.count()).select_from(Chore).where(
+                and_(Chore.status == ChoreStatus.OVERDUE, Chore.is_archived == False)
+            )
+        )
+        
+        # Count open to work chores (pending status, due today or in past, not overdue)
+        open_to_work_chores = await db.scalar(
+            select(func.count()).select_from(Chore).where(
+                and_(
+                    Chore.status == ChoreStatus.PENDING,
+                    Chore.is_archived == False,
+                    or_(
+                        Chore.due_date == None,  # No due date means always available
+                        Chore.due_date <= today   # Due today or in the past
+                    )
+                )
+            )
+        )
+        
+        # Count upcoming chores (pending status, due in future)
+        upcoming_chores = await db.scalar(
+            select(func.count()).select_from(Chore).where(
+                and_(
+                    Chore.status == ChoreStatus.PENDING,
+                    Chore.is_archived == False,
+                    Chore.due_date > today
+                )
+            )
+        )
+        
+        # Count completed chores (for recent activity)
         completed_chores = await db.scalar(
             select(func.count()).select_from(Chore).where(Chore.status == ChoreStatus.COMPLETED)
         )
@@ -783,9 +907,15 @@ async def get_dashboard(
         return {
             "members": members_data,
             "total_chores": total_chores,
-            "pending_chores": pending_chores,
+            "past_due_chores": past_due_chores,
+            "open_to_work_chores": open_to_work_chores,
+            "upcoming_chores": upcoming_chores,
             "completed_chores": completed_chores,
             "completed_today": completed_today,
+            # Combined actionable chores (past due + open to work)
+            "actionable_chores": past_due_chores + open_to_work_chores,
+            # Legacy fields for backward compatibility (can remove later)
+            "pending_chores": open_to_work_chores + upcoming_chores,
         }
     except Exception as e:
         logger.error(f"Error getting dashboard: {e}", exc_info=True)
@@ -830,9 +960,123 @@ async def admin_reset_monthly(
         raise DatabaseException("Failed to reset monthly points", operation="update")
 
 
+@chores_router.post("/admin/update-overdue", status_code=status.HTTP_200_OK)
+async def admin_update_overdue(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+) -> JSONResponse:
+    """
+    Manually trigger overdue status update for all chores.
+    """
+    try:
+        from backend.services.chores import ChoreService
+        updated_count = await ChoreService.update_overdue_status(db)
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "message": f"Overdue status updated successfully",
+                "updated_chores": updated_count
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error updating overdue status: {e}", exc_info=True)
+        raise DatabaseException("Failed to update overdue status", operation="update")
+
+
 # ============================================================================
 # CHORE ENDPOINTS (Parametric routes MUST come LAST)
 # ============================================================================
+
+@chores_router.get("", response_model=List[ChoreResponse])
+async def list_chores(
+    request: Request,
+    status: Optional[ChoreStatus] = None,
+    assigned_to_id: Optional[int] = None,
+    category: Optional[ChoreCategory] = None,
+    priority: Optional[ChorePriority] = None,
+    db: AsyncSession = Depends(get_db)
+) -> List[ChoreResponse]:
+    """
+    List all chores with optional filtering.
+    """
+    try:
+        # Update overdue status before fetching chores
+        from backend.services.chores import ChoreService
+        await ChoreService.update_overdue_status(db)
+        
+        stmt = select(Chore).where(
+            # Show non-archived chores OR completed chores from the last 7 days
+            or_(
+                Chore.is_archived == False,
+                and_(
+                    Chore.status == ChoreStatus.COMPLETED,
+                    Chore.completed_at >= datetime.utcnow() - timedelta(days=7),
+                    Chore.is_archived == True
+                )
+            )
+        )
+        
+        # Apply filters
+        if status:
+            stmt = stmt.where(Chore.status == status)
+        if assigned_to_id:
+            stmt = stmt.where(Chore.assigned_to_id == assigned_to_id)
+        if category:
+            stmt = stmt.where(Chore.category == category)
+        if priority:
+            stmt = stmt.where(Chore.priority == priority)
+        
+        # Order by due date, then created date
+        stmt = stmt.order_by(Chore.due_date.asc().nullslast(), Chore.created_at.desc())
+        
+        result = await db.execute(stmt)
+        chores = result.scalars().all()
+        
+        # Build responses with member names
+        responses = []
+        for chore in chores:
+            # Get creator name
+            creator_result = await db.execute(
+                select(FamilyMember).where(FamilyMember.id == chore.created_by_id)
+            )
+            creator = creator_result.scalar_one_or_none()
+            
+            # Get assignee name if assigned
+            assignee_name = None
+            if chore.assigned_to_id:
+                assignee_result = await db.execute(
+                    select(FamilyMember).where(FamilyMember.id == chore.assigned_to_id)
+                )
+                assignee = assignee_result.scalar_one_or_none()
+                assignee_name = assignee.name if assignee else None
+            
+            responses.append(ChoreResponse(
+                id=chore.id,
+                title=chore.title,
+                description=chore.description,
+                points=chore.points,
+                category=chore.category,
+                priority=chore.priority,
+                status=chore.status,
+                recurrence_type=chore.recurrence_type,
+                recurrence_interval=chore.recurrence_interval,
+                assigned_to_id=chore.assigned_to_id,
+                assigned_to_name=assignee_name,
+                created_by_id=chore.created_by_id,
+                created_by_name=creator.name if creator else "Unknown",
+                estimated_minutes=chore.estimated_minutes,
+                due_date=chore.due_date,
+                next_due_date=chore.next_due_date,
+                notes=chore.notes,
+                created_at=chore.created_at,
+                updated_at=chore.updated_at
+            ))
+        
+        return responses
+    except Exception as e:
+        logger.error(f"Error listing chores: {e}", exc_info=True)
+        raise DatabaseException("Failed to retrieve chores", operation="select")
+
 
 @chores_router.get("/{chore_id}", response_model=ChoreResponse)
 async def get_chore(
@@ -930,6 +1174,12 @@ async def create_chore(
                 raise NotFoundException("Assigned member", str(chore.assigned_to_id))
         
         now = datetime.utcnow()
+        
+        # Default due_date to today if not provided
+        due_date = chore.due_date
+        if not due_date:
+            due_date = now.date()
+        
         db_chore = Chore(
             title=chore.title.strip(),
             description=chore.description,
@@ -942,7 +1192,7 @@ async def create_chore(
             assigned_to_id=chore.assigned_to_id,
             created_by_id=chore.created_by_id,
             estimated_minutes=chore.estimated_minutes,
-            due_date=chore.due_date,
+            due_date=due_date,  # Use the defaulted due_date
             notes=chore.notes,
             created_at=now,
             updated_at=now
@@ -984,46 +1234,6 @@ async def create_chore(
         logger.error(f"Error creating chore: {e}", exc_info=True)
         raise DatabaseException("Failed to create chore", operation="insert")
 
-
-@chores_router.get("/{chore_id}", response_model=ChoreResponse)
-async def get_chore(
-    request: Request,
-    chore_id: int,
-    db: AsyncSession = Depends(get_db)
-) -> ChoreResponse:
-    """
-    Get a specific chore by ID.
-    """
-    try:
-        result = await db.execute(select(Chore).where(Chore.id == chore_id))
-        chore = result.scalar_one_or_none()
-        
-        if not chore:
-            raise NotFoundException("Chore", str(chore_id))
-        
-        response_dict = ChoreResponse.model_validate(chore).model_dump()
-        
-        # Get creator name
-        creator_result = await db.execute(
-            select(FamilyMember).where(FamilyMember.id == chore.created_by_id)
-        )
-        creator = creator_result.scalar_one_or_none()
-        response_dict['created_by_name'] = creator.name if creator else "Unknown"
-        
-        # Get assignee name if assigned
-        if chore.assigned_to_id:
-            assignee_result = await db.execute(
-                select(FamilyMember).where(FamilyMember.id == chore.assigned_to_id)
-            )
-            assignee = assignee_result.scalar_one_or_none()
-            response_dict['assigned_to_name'] = assignee.name if assignee else "Unknown"
-        
-        return ChoreResponse(**response_dict)
-    except NotFoundException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting chore {chore_id}: {e}", exc_info=True)
-        raise DatabaseException("Failed to retrieve chore", operation="select")
 
 
 @chores_router.put("/{chore_id}", response_model=ChoreResponse)

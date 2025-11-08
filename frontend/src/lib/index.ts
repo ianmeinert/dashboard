@@ -14,3 +14,6 @@ export * from './components/calendar/OverflowPopup.svelte';
 // Grocery list exports
 export * from './stores/grocery';
 
+// Chores exports
+export * from './stores/chores';
+

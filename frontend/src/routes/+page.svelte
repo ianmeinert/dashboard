@@ -2,6 +2,7 @@
   import GoogleCalendarProvider from '$lib/components/calendar/GoogleCalendarProvider.svelte';
   import ForecastWidget from '$lib/components/ForecastWidget.svelte';
   import GroceryList from '$lib/components/GroceryList.svelte';
+  import ChoresDashboard from '$lib/components/chores/ChoresDashboard.svelte';
 
   let selectedQuadrant: string | null = null;
 
@@ -54,7 +55,11 @@
   }
   .calendar-cell {
     grid-row: 2 / 3;
-    grid-column: 1 / 3;
+    grid-column: 1 / 2;
+  }
+  .chores-cell {
+    grid-row: 2 / 3;
+    grid-column: 2 / 3;
   }
   .forecast-quadrant {
     max-width: 700px;
@@ -65,14 +70,15 @@
   @media (max-width: 900px) {
     .dashboard-grid {
       grid-template-columns: 1fr;
-      grid-template-rows: auto auto auto;
+      grid-template-rows: auto auto auto auto;
     }
-    .forecast-cell, .grocery-cell, .calendar-cell {
+    .forecast-cell, .grocery-cell, .calendar-cell, .chores-cell {
       grid-column: 1 / 2;
     }
     .forecast-cell { grid-row: 1 / 2; }
     .grocery-cell { grid-row: 2 / 3; }
     .calendar-cell { grid-row: 3 / 4; }
+    .chores-cell { grid-row: 4 / 5; }
   }
   .quadrant {
     transition: box-shadow 0.2s, transform 0.2s, z-index 0.2s;
@@ -189,6 +195,20 @@
           <div class="quadrant-overlay" tabindex="-1" aria-hidden="true"></div>
         {/if}
         {#if selectedQuadrant === 'calendar'}
+          <button class="close-btn" aria-label="Close" on:click|stopPropagation={closeQuadrant}>&times;</button>
+        {/if}
+      </div>
+    </div>
+
+    <!-- Chores Dashboard (bottom-right) -->
+    <div class="chores-cell">
+      <div class="quadrant bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md p-6 {selectedQuadrant === 'chores' ? 'selected' : ''}" tabindex="0" aria-label="Expand Chores Dashboard" on:click={() => selectQuadrant('chores')}>
+        <h2 class="text-xl font-bold mb-4 text-center">Family Chores</h2>
+        <ChoresDashboard compact={selectedQuadrant !== 'chores'} />
+        {#if selectedQuadrant !== 'chores'}
+          <div class="quadrant-overlay" tabindex="-1" aria-hidden="true"></div>
+        {/if}
+        {#if selectedQuadrant === 'chores'}
           <button class="close-btn" aria-label="Close" on:click|stopPropagation={closeQuadrant}>&times;</button>
         {/if}
       </div>

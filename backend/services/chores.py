@@ -363,11 +363,23 @@ class ChoreService:
         """Create a new chore."""
         chore_data = data.model_dump()
         
-        # Handle recurrence
+        # Default due_date to today if not provided
+        if not chore_data.get('due_date'):
+            chore_data['due_date'] = date.today()
+        
+        # Handle recurrence - set is_recurring based on recurrence_type
+        if chore_data.get('recurrence_type') and chore_data.get('recurrence_type') != RecurrencePattern.NONE:
+            chore_data['is_recurring'] = True
+            chore_data['recurrence_pattern'] = chore_data['recurrence_type']
+        else:
+            chore_data['is_recurring'] = False
+            chore_data['recurrence_pattern'] = RecurrencePattern.NONE
+        
+        # Set next occurrence if recurring
         if chore_data.get('is_recurring') and chore_data.get('recurrence_pattern') != RecurrencePattern.NONE:
             if not chore_data.get('next_occurrence'):
                 chore_data['next_occurrence'] = calculate_next_occurrence(
-                    date.today(),
+                    chore_data['due_date'],
                     chore_data['recurrence_pattern'],
                     chore_data.get('recurrence_interval', 1)
                 )
@@ -499,7 +511,11 @@ class ChoreService:
         if not member:
             return None, "Family member not found"
         
-        # Check if member has exceeded weekly cap
+        # Check if chore can be completed (must be on or after due date)
+        today = date.today()
+        if chore.due_date and chore.due_date > today:
+            return None, f"This chore is not due until {chore.due_date.strftime('%Y-%m-%d')}. Please wait until the due date to complete it."
+        
         await FamilyMemberService.check_and_reset_weekly_points(session, member)
         weekly_cap = await FamilyMemberService.get_weekly_cap(member)
         
@@ -512,9 +528,9 @@ class ChoreService:
             completed_by_id=member.id,
             chore_title=chore.title,
             points_earned=chore.points,
-            notes=data.notes,
-            time_spent_minutes=data.time_spent_minutes,
-            verification_photo_url=data.verification_photo_url
+            notes=data.completion_notes,
+            time_spent_minutes=data.actual_minutes,
+            verification_photo_url=data.photo_url
         )
         session.add(completion)
         
@@ -529,7 +545,11 @@ class ChoreService:
         chore.completed_by_id = member.id
         
         # Handle recurring chores
-        if chore.is_recurring and chore.recurrence_pattern != RecurrencePattern.NONE:
+        if chore.is_recurring and chore.recurrence_type != RecurrencePattern.NONE:
+            # Ensure due_date is a date object for proper comparison
+            chore_due = chore.due_date if isinstance(chore.due_date, date) else date.fromisoformat(str(chore.due_date))
+            base_date = today if chore_due < today else chore_due
+            
             # Create next occurrence
             next_chore = Chore(
                 title=chore.title,
@@ -540,18 +560,18 @@ class ChoreService:
                 assigned_to_id=chore.assigned_to_id,
                 created_by_id=chore.created_by_id,
                 is_recurring=True,
-                recurrence_pattern=chore.recurrence_pattern,
+                recurrence_pattern=chore.recurrence_type,
                 recurrence_interval=chore.recurrence_interval,
                 notes=chore.notes,
                 estimated_minutes=chore.estimated_minutes,
                 due_date=calculate_next_occurrence(
-                    chore.due_date or date.today(),
-                    chore.recurrence_pattern,
+                    base_date,
+                    chore.recurrence_type,
                     chore.recurrence_interval
                 ),
                 next_occurrence=calculate_next_occurrence(
-                    chore.next_occurrence or date.today(),
-                    chore.recurrence_pattern,
+                    base_date,
+                    chore.recurrence_type,
                     chore.recurrence_interval
                 )
             )
@@ -572,10 +592,12 @@ class ChoreService:
                 and_(
                     Chore.due_date < today,
                     Chore.status.in_([ChoreStatus.PENDING, ChoreStatus.IN_PROGRESS]),
-                    Chore.is_archived == False
+                    Chore.is_archived.is_(False)
                 )
             )
             .values(status=ChoreStatus.OVERDUE)
         )
         await session.commit()
         return result.rowcount or 0
+
+
